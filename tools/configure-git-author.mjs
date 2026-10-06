@@ -1,0 +1,10 @@
+import {execFileSync} from 'node:child_process';
+const credential=execFileSync('git',['credential','fill'],{input:'protocol=https\nhost=github.com\n\n',encoding:'utf8',stdio:['pipe','pipe','pipe']});
+const token=credential.split(/\r?\n/).find(s=>s.startsWith('password='))?.slice(9);
+if(!token)throw new Error('GitHub authentication unavailable.');
+const response=await fetch('https://api.github.com/user',{headers:{Authorization:`Bearer ${token}`,Accept:'application/vnd.github+json'}});
+if(!response.ok)throw new Error('Authenticated account lookup failed.');
+const user=await response.json();
+execFileSync('git',['config','--local','user.name',user.name||user.login],{stdio:'pipe'});
+execFileSync('git',['config','--local','user.email',`${user.id}+${user.login}@users.noreply.github.com`],{stdio:'pipe'});
+console.log('Repository-local author configured using the authenticated GitHub account and its private noreply address.');

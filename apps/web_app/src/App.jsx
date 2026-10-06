@@ -1,136 +1,111 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import Navbar from './components/common/Navbar';
-import Footer from './components/common/Footer';
-import PostAdModal from './components/common/PostAdModal';
-import ContactSellerModal from './components/common/ContactSellerModal';
-import HomePage from './pages/HomePage';
-import ShopsPage from './pages/ShopsPage';
-import ListingsPage from './pages/ListingsPage';
-import ListingDetailPage from './pages/ListingDetailPage';
-
-// Scroll to top helper
-function ScrollToTop() {
-  const { pathname } = useLocation();
+import { useEffect, useState } from "react";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useLocation,
+  useNavigate,
+  Link,
+} from "react-router-dom";
+import Navbar from "./components/common/Navbar";
+import Footer from "./components/common/Footer";
+import ContactSellerModal from "./components/common/ContactSellerModal";
+import HomePage from "./pages/HomePage";
+import ShopsPage from "./pages/ShopsPage";
+import ListingsPage from "./pages/ListingsPage";
+import ListingDetailPage from "./pages/ListingDetailPage";
+import AccountPage from "./pages/AccountPage";
+import AdminPage from "./pages/AdminPage";
+import MerchantPage from "./pages/MerchantPage";
+import MessagesPage from "./pages/MessagesPage";
+import SellPage from "./pages/SellPage";
+import MyListingsPage from "./pages/MyListingsPage";
+import InformationPage from "./pages/InformationPage";
+import { AccountProvider } from "./AccountContext";
+import "./production.css";
+function Application() {
+  const navigate = useNavigate(),
+    location = useLocation(),
+    [contact, setContact] = useState(null),
+    [favorites, setFavorites] = useState(() => {
+      try {
+        return JSON.parse(localStorage.getItem("ait_favorites")) || [];
+      } catch {
+        return [];
+      }
+    });
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [pathname]);
-  return null;
-}
-
-export default function App() {
-  const [postAdOpen, setPostAdOpen] = useState(false);
-  const [contactModalData, setContactModalData] = useState(null);
-  
-  // Persistent Favorites
-  const [favorites, setFavorites] = useState(() => {
-    try {
-      const saved = localStorage.getItem('galletrix_favorites');
-      return saved ? JSON.parse(saved) : ['list_creta_2022'];
-    } catch {
-      return ['list_creta_2022'];
-    }
-  });
-
-  const handleToggleFavorite = (id) => {
-    setFavorites((prev) => {
-      let updated;
-      if (prev.includes(id)) {
-        updated = prev.filter((favId) => favId !== id);
-      } else {
-        updated = [...prev, id];
-      }
-      try {
-        localStorage.setItem('galletrix_favorites', JSON.stringify(updated));
-      } catch (err) {
-        console.error(err);
-      }
-      return updated;
+    setContact(null);
+  }, [location.pathname]);
+  function toggle(id) {
+    setFavorites((previous) => {
+      const next = previous.includes(id)
+        ? previous.filter((x) => x !== id)
+        : [...previous, id];
+      localStorage.setItem("ait_favorites", JSON.stringify(next));
+      return next;
     });
-  };
-
+  }
+  const listingProps = { favorites, onToggleFavorite: toggle },
+    onOpenPostAd = () => navigate("/sell");
   return (
-    <BrowserRouter>
-      <ScrollToTop />
-      
-      {/* Top Navbar */}
-      <Navbar 
-        onOpenPostAd={() => setPostAdOpen(true)} 
-        favoritesCount={favorites.length}
-      />
-
-      {/* Main Pages */}
+    <>
+      <Navbar onOpenPostAd={onOpenPostAd} favoritesCount={favorites.length} />
       <main style={{ flex: 1 }}>
         <Routes>
-          <Route 
-            path="/" 
-            element={
-              <HomePage 
-                onOpenPostAd={() => setPostAdOpen(true)} 
-                favorites={favorites}
-                onToggleFavorite={handleToggleFavorite}
-              />
-            } 
+          <Route
+            path="/"
+            element={<HomePage onOpenPostAd={onOpenPostAd} {...listingProps} />}
           />
-          <Route 
-            path="/shops" 
-            element={
-              <ShopsPage 
-                onOpenContact={(shopData) => setContactModalData(shopData)}
-                favorites={favorites}
-                onToggleFavorite={handleToggleFavorite}
-              />
-            } 
+          <Route
+            path="/listings"
+            element={<ListingsPage {...listingProps} />}
           />
-          <Route 
-            path="/listings" 
+          <Route
+            path="/listings/:id"
             element={
-              <ListingsPage 
-                favorites={favorites}
-                onToggleFavorite={handleToggleFavorite}
-              />
-            } 
+              <ListingDetailPage onOpenContact={setContact} {...listingProps} />
+            }
           />
-          <Route 
-            path="/listings/:id" 
+          <Route path="/shops" element={<ShopsPage />} />
+          <Route path="/account" element={<AccountPage />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/merchant" element={<MerchantPage />} />
+          <Route path="/messages" element={<MessagesPage />} />
+          <Route path="/sell" element={<SellPage />} />
+          <Route path="/my-listings" element={<MyListingsPage />} />
+          {["download", "terms", "privacy", "safety"].map((path) => (
+            <Route key={path} path={"/" + path} element={<InformationPage />} />
+          ))}
+          <Route
+            path="*"
             element={
-              <ListingDetailPage 
-                onOpenContact={(item) => setContactModalData(item)}
-                favorites={favorites}
-                onToggleFavorite={handleToggleFavorite}
-              />
-            } 
-          />
-          <Route 
-            path="*" 
-            element={
-              <HomePage 
-                onOpenPostAd={() => setPostAdOpen(true)} 
-                favorites={favorites}
-                onToggleFavorite={handleToggleFavorite}
-              />
-            } 
+              <section className="ait-page">
+                <h1>Page not found</h1>
+                <Link className="btn-primary" to="/">
+                  Return home
+                </Link>
+              </section>
+            }
           />
         </Routes>
       </main>
-
-      {/* Multi-column Footer */}
       <Footer />
-
-      {/* Global Interactive Modals */}
-      <PostAdModal 
-        isOpen={postAdOpen} 
-        onClose={() => setPostAdOpen(false)}
-        onListingCreated={(newListing) => {
-          console.log('Listing created:', newListing);
-        }}
+      <ContactSellerModal
+        isOpen={!!contact}
+        listing={contact}
+        onClose={() => setContact(null)}
       />
-
-      <ContactSellerModal 
-        isOpen={Boolean(contactModalData)}
-        listing={contactModalData}
-        onClose={() => setContactModalData(null)}
-      />
+    </>
+  );
+}
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AccountProvider>
+        <Application />
+      </AccountProvider>
     </BrowserRouter>
   );
 }

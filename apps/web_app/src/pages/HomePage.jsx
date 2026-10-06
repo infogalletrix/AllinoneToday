@@ -4,7 +4,6 @@ import CategoryGrid from '../components/home/CategoryGrid';
 import TrendingSection from '../components/home/TrendingSection';
 import HowItWorks from '../components/home/HowItWorks';
 import TrustSection from '../components/home/TrustSection';
-import ExploreAndSearchesSection from '../components/home/ExploreAndSearchesSection';
 import SellCtaBanner from '../components/home/SellCtaBanner';
 
 export default function HomePage({ onOpenPostAd, favorites, onToggleFavorite }) {
@@ -29,7 +28,6 @@ export default function HomePage({ onOpenPostAd, favorites, onToggleFavorite }) 
       <TrustSection />
 
       {/* 6. Continue Exploring (2 items) & Saved Searches Table */}
-      <ExploreAndSearchesSection />
 
       {/* 7. Orange CTA Banner (Have something to sell? Post a listing -> / Learn How It Works) */}
       <SellCtaBanner onOpenPostAd={onOpenPostAd} />

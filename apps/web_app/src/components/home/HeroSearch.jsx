@@ -41,7 +41,7 @@ export default function HeroSearch() {
 
           {/* Subtitle */}
           <p className="figma-hero-description">
-            Explore products, properties, vehicles, jobs and services from trusted sellers around you.
+            Explore products, properties, vehicles, jobs and services from people and shops around you.
           </p>
 
           {/* Translucent Search Pill Bar matching Figma Desktop - 71 */}

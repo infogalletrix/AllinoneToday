@@ -25,7 +25,7 @@ export default function Navbar({ onOpenPostAd, favoritesCount = 0 }) {
       <div className="container navbar-container">
         {/* Brand Logo matching Figma Desktop - 71 */}
         <Link to="/" className="figma-navbar-brand">
-          <span className="figma-brand-text">Marketplace</span>
+          <span className="figma-brand-text">All in One Today</span>
         </Link>
 
         {/* Desktop Navigation Links matching Figma Desktop - 71: Browse, Shops, Favorites, Message, Post an Ad */}
@@ -46,14 +46,13 @@ export default function Navbar({ onOpenPostAd, favoritesCount = 0 }) {
             {favoritesCount > 0 && <span className="nav-fav-pill">{favoritesCount}</span>}
           </Link>
 
-          <button 
-            type="button" 
-            onClick={() => alert("Opening messages with verified sellers...")}
-            className="figma-nav-item"
-          >
+          <Link to="/messages" className="figma-nav-item">
             <MessageSquare size={16} className="nav-item-icon" />
             <span>Message</span>
-          </button>
+          </Link>
+
+          <Link to="/account" className="figma-nav-item">Account</Link>
+          <Link to="/merchant" className="figma-nav-item">For shops</Link>
 
           {/* Black Pill Button: "Post an Ad" matching Figma Desktop - 71 */}
           <button 
@@ -87,8 +86,12 @@ export default function Navbar({ onOpenPostAd, favoritesCount = 0 }) {
             <span>Favorites</span>
           </Link>
           <Link to="/shops" onClick={() => setMobileMenuOpen(false)}>
-            <span>Vehicle Shops</span>
+            <span>Shops</span>
           </Link>
+          <Link to="/messages" onClick={() => setMobileMenuOpen(false)}>Messages</Link>
+          <Link to="/account" onClick={() => setMobileMenuOpen(false)}>Account</Link>
+          <Link to="/merchant" onClick={() => setMobileMenuOpen(false)}>For shop owners</Link>
+          <Link to="/download" onClick={() => setMobileMenuOpen(false)}>Download apps</Link>
           <button 
             type="button"
             onClick={() => { setMobileMenuOpen(false); onOpenPostAd(); }}

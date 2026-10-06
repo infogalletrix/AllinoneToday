@@ -11,7 +11,7 @@ export default function CategoryGrid() {
       imagePath: '/images/h1.png',
       title: 'Vehicles',
       subtitle: 'Car , Bike & Commercial',
-      route: '/shops',
+      route: '/listings?category=Vehicles',
     },
     {
       id: 'cat_property',

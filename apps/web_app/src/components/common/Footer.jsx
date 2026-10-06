@@ -10,10 +10,10 @@ export default function Footer() {
           {/* Column 1: Marketplace Brand & Tagline */}
           <div className="footer-col-brand">
             <Link to="/" className="footer-brand-title">
-              Marketplace
+              All in One Today
             </Link>
             <p className="footer-brand-desc">
-              Everything you need, all in one marketplace. Discover, buy, sell and connect with trusted sellers near you.
+              Your local finds, all in one place. Discover, sell and connect with people and shops near you.
             </p>
           </div>
 
@@ -31,13 +31,13 @@ export default function Footer() {
 
           {/* Column 3: Company */}
           <div className="footer-col-links">
-            <h4 className="footer-col-head">Company</h4>
+            <h4 className="footer-col-head">Your marketplace</h4>
             <ul className="footer-links-list">
-              <li><Link to="/listings?category=Vehicles">Vehicles</Link></li>
-              <li><Link to="/listings?category=Property">Property</Link></li>
-              <li><Link to="/listings?category=Jobs">Jobs</Link></li>
-              <li><Link to="/listings?category=Mobiles">Mobiles</Link></li>
-              <li><Link to="/listings?category=Services">Services</Link></li>
+              <li><Link to="/merchant">Register your shop</Link></li>
+              <li><Link to="/account">Your account</Link></li>
+              <li><Link to="/messages">Messages</Link></li>
+              <li><Link to="/download">Download apps</Link></li>
+              <li><a href="https://galletrix.com/contact">Contact support</a></li>
             </ul>
           </div>
 
@@ -48,14 +48,12 @@ export default function Footer() {
               <li><Link to="/terms">Terms</Link></li>
               <li><Link to="/privacy">Privacy</Link></li>
               <li><Link to="/safety">Safety Tips</Link></li>
-              <li><Link to="/listings?category=Mobiles">Mobiles</Link></li>
-              <li><Link to="/listings?category=Services">Services</Link></li>
             </ul>
           </div>
         </div>
 
         <div className="footer-bottom-bar-clean">
-          <p className="footer-copy-text">© 2026 Galletrix Marketplace. All rights reserved.</p>
+          <p className="footer-copy-text">© 2026 Galletrix · All in One Today. All rights reserved.</p>
         </div>
       </div>
     </footer>

@@ -26,3 +26,21 @@
 .DS_Store
 **/.DS_Store
 Thumbs.db
+
+# Local tools, credentials and generated release files
+.local/
+node_modules/
+**/node_modules/
+**/dist/
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+**/key.properties
+artifacts/
+scratch/
+**/android/gradlew
+**/android/gradlew.bat
+**/android/gradle/wrapper/gradle-wrapper.jar
+**/unsigned-ios.zip

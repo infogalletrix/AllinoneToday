@@ -1,110 +1,73 @@
-# Galletrix Marketplace (Full-Stack Dart & Flutter)
+# All in One Today marketplace
 
-A modern full-stack mobile marketplace application built entirely in **Dart**:
-- **Mobile Frontend (`apps/mobile_app`)**: Built with **Flutter 3.44+**, **Flutter Bloc (Cubit)**, and **Material 3**. Supports iOS, Android, and Web with dark/light themes, product browsing, dynamic filtering, interactive cart, orders tracking, and user profile management.
-- **Backend API (`apps/backend_api`)**: Built with **Dart Frog (1.2.14)**. Provides RESTful endpoints for categories, products, search, cart synchronization, orders, and authentication with CORS & error handling middleware.
-- **Shared Domain Package (`packages/shared_models`)**: Shared Dart models (User, Product, Category, CartItem, Order, ApiResponse) shared between frontend and backend without code duplication.
+All in One Today has a public website, a public mobile app and a separate shop-owner app. The website is hosted at https://allinonetoday.galletrix.com. Accounts, listings, photos, inquiries and shop registrations are stored by the production API in PostgreSQL.
 
----
+Shop payments remain disabled until Galletrix approves the ₹499 starting fee, billing period, category prices and additional-branch prices, and configures marketplace-specific Razorpay credentials and webhooks. Unpaid shops are not published and cannot publish business listings. No demo payment response grants access.
 
-## 📁 Repository Structure
+## Applications and services
 
-```
-Marketplace/
-├── apps/
-│   ├── mobile_app/                          # 📱 Flutter Mobile App (iOS / Android / Web)
-│   │   ├── lib/
-│   │   │   ├── main.dart                    # App bootstrap & navigation tabs
-│   │   │   ├── core/
-│   │   │   │   ├── services/api_service.dart # HTTP client connecting to backend
-│   │   │   │   └── theme/app_theme.dart     # Material 3 dark/light themes & colors
-│   │   │   └── features/
-│   │   │       ├── home/                    # Discovery, search, promo banners, grid
-│   │   │       ├── products/                # Product details, image gallery, specs
-│   │   │       ├── cart/                    # Cart state, item increments, checkout
-│   │   │       ├── orders/                  # Live order status & delivery tracking
-│   │   │       └── profile/                 # VIP account, addresses, preferences
-│   │   └── test/widget_test.dart            # Flutter widget automated tests
-│   │
-│   └── backend_api/                         # 🚀 Dart Frog Backend API
-│       ├── routes/
-│       │   ├── _middleware.dart             # Global CORS & request logging
-│       │   └── api/
-│       │       ├── categories/index.dart    # GET /api/categories
-│       │       ├── products/
-│       │       │   ├── index.dart           # GET /api/products (filter & search)
-│       │       │   └── [id].dart            # GET /api/products/:id
-│       │       ├── cart/index.dart          # GET, POST, DELETE /api/cart
-│       │       └── orders/index.dart        # GET, POST /api/orders
-│       ├── lib/src/data/mock_database.dart  # In-memory mock database & seed items
-│       └── test/routes/                     # Route integration tests
-│
-└── packages/
-    └── shared_models/                       # 📦 Shared Dart Models & Contracts
-        ├── lib/
-        │   ├── shared_models.dart           # Barrel exports
-        │   └── src/                         # User, Product, Category, Cart, Order, ApiResponse
-        └── pubspec.yaml
-```
+| Component | Location | Purpose |
+| --- | --- | --- |
+| Public website | `apps/web_app` | Search, individual selling, accounts and messages |
+| Public mobile app | `apps/mobile_app` | Native browsing, listings, favorites, inquiries and account management |
+| Shop-owner mobile app | `apps/merchant_app` | Shop registration, subscription, business listings and inquiries |
+| Production API | `apps/platform_api` | Authentication, ownership checks, persistent data and payment verification |
+| VPS configuration | `deployment` | Isolated database and API containers, Nginx and HTTPS |
 
----
+The original Dart Frog prototype, Flutter demo screens and shared models are retained. `lib/demo_main.dart`, `prototype-tests` and `UPSTREAM_README.md` describe the original demo, not the deployed flow. Product purchases are arranged directly with sellers; this launch is a classifieds and shop-directory marketplace, not an order-fulfillment or escrow service.
 
-## 🚀 Getting Started
+## Build and test
 
-### 1. Run Backend API & Database with Docker Compose (Recommended)
+Use Node 22 or newer, Flutter 3.47.6, Android Studio and an Android SDK. On Windows, install Flutter at a path without spaces to avoid native-assets hook failures.
 
-Run the backend and PostgreSQL 16 database with persistent storage:
-```bash
-docker compose up -d
-```
-- **Database**: PostgreSQL 16 Alpine on port `5432` (persistent named volume `marketplace_pgdata`).
-- **Schema & Seeding**: Automatically initialized via `apps/backend_api/database/init.sql`.
-- **API Server**: Native AOT compiled Dart Frog server on `http://localhost:8080`.
-- Health check: `curl http://localhost:8080`
-- Listings API: `curl http://localhost:8080/api/listings`
-- Categories API: `curl http://localhost:8080/api/categories`
-
-To view logs or stop:
-```bash
-docker compose logs -f api
-docker compose down
-```
-
-### 2. Run Backend API Locally (Development Mode)
-```bash
-cd apps/backend_api
-dart_frog dev
-```
-The API server will connect to PostgreSQL if available, or gracefully fallback to the in-memory mock database.
-
-### 3. Run the React Web App (Vite + JSX)
-In another terminal:
-```bash
+```sh
 cd apps/web_app
-npm install
-npm run dev
+npm ci
+npm run build
+cd ../platform_api
+npm ci
+npm test
+cd ../mobile_app
+flutter pub get
+flutter analyze lib/production
+flutter test
+flutter build apk --release
+cd ../merchant_app
+flutter pub get
+flutter test
+flutter build apk --release
 ```
-Open [http://localhost:5173](http://localhost:5173) in your browser. All API requests are proxied directly to the backend at port 8080.
 
-### 4. Run the Flutter Mobile App
-In another terminal:
-```bash
-cd apps/mobile_app
-flutter run
+Android release builds require ignored `android/key.properties` files and a signing keystore. `tools/create-signing.mjs` generates new-project signing material on the current Windows machine without printing passwords. Back up `.local/signing` securely: the same key is required for future APK updates. Never commit or publish keys or credentials.
+
+The apps use the live HTTPS origin by default. Override it with `--dart-define=PLATFORM_URL=https://your-host`. Local Vite development proxies `/api` and `/uploads` to port 8080. Copy the API `.env.example` privately and provide a PostgreSQL connection.
+
+`tools/api-smoke.mjs` checks account creation, passwords, uploads, listing ownership, private inquiries, unpaid-shop restrictions, fake-payment rejection and reports. It creates temporary accounts, then removes their personal data and hides test listings. Prefer staging for subsequent runs. `tools/web-smoke.mjs` checks Chrome desktop and mobile layouts; install Playwright locally to use it.
+
+## Shop billing configuration
+
+Server-calculated prices use paise: base price plus `(branches - 1) × additional branch price`. The example configuration has `approved: false` and no fabricated category rates. Supply an approved period of `month` or `year`, a version and category entries in `/opt/allinonetoday/deployment/pricing.json`.
+
+Store `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET` in the root-only VPS environment file. Configure Razorpay subscriptions and a dedicated webhook at `https://allinonetoday.galletrix.com/api/billing/webhook`. Enable `subscription.charged`, `subscription.cancelled`, `subscription.completed`, `subscription.halted` and `subscription.expired`. Test the full payment, renewal and cancellation flow with test-mode credentials before opening live registration.
+
+The API verifies signatures, matches captured payments to the subscription invoice and checks the full price. Webhooks are deduplicated and access requires a future paid-through date. A small verification charge or client-side success alone does not publish a shop. Normal cancellation stops renewals at the paid-cycle end; confirmed account deletion stops the mandate immediately before removing personal data.
+
+## VPS operation
+
+Production lives under `/opt/allinonetoday`. Compose project `allinonetoday` owns its own database and uploads volumes. Only API port `127.0.0.1:5088` is exposed; PostgreSQL has no public port. Nginx has a dedicated site. Existing ERP and other VPS applications are outside this deployment.
+
+```sh
+cd /opt/allinonetoday
+docker compose -p allinonetoday -f deployment/compose.yml --env-file deployment/.env ps
+curl -f https://allinonetoday.galletrix.com/api/health
 ```
-You can select iOS Simulator, Android Emulator, macOS Desktop, or Chrome browser.
 
-### 5. Run Automated Tests
-- Mobile app tests:
-  ```bash
-  cd apps/mobile_app && flutter test
-  ```
-- Backend API tests:
-  ```bash
-  cd apps/backend_api && dart test
-  ```
-- Web app build validation:
-  ```bash
-  cd apps/web_app && npm run build
-  ```
+Treat the environment file, database and uploads as private. The release archive contains no secrets. `deployment/install.sh` preserves private environment and pricing files on updates. Back up the database and photos before major changes, and monitor disk capacity, moderation reports and failed webhooks.
 
+## App Store preparation
+
+See `app-store/README.md` for identities and submission requirements. iOS source includes product names, icons and photo permission messages. A manual GitHub workflow prepares unsigned builds. Signed IPAs require Apple Developer signing and App Store Connect access. New shop subscription purchases are disabled in iOS pending the applicable payment implementation; existing subscribers can manage their shops.
+
+## Source provenance
+
+Imported from https://github.com/Akhilrs-RS/marketplace at `57d5463c529bc87c2e24f623d791049eba9b6492`, preserving history. Company repository: https://github.com/infogalletrix/AllinoneToday. Confirm rights to redistribute upstream code and supplied imagery before broad commercial distribution; the source has no license file.

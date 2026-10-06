@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: allinonetoday
+      POSTGRES_USER: allinonetoday
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+    volumes:
+      - database:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U allinonetoday -d allinonetoday']
+      interval: 5s
+      retries: 12
+    mem_limit: 512m
+  api:
+    build: ../apps/platform_api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PUBLIC_URL: https://allinonetoday.galletrix.com
+      DATABASE_URL: postgres://allinonetoday:${DB_PASSWORD}@db:5432/allinonetoday
+      UPLOAD_DIR: /app/uploads
+      PRICING_FILE: /app/pricing.json
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+    ports:
+      - 127.0.0.1:5088:8080
+    volumes:
+      - uploads:/app/uploads
+      - ./pricing.json:/app/pricing.json:ro
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:8080/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    mem_limit: 384m
+volumes:
+  database:
+  uploads:

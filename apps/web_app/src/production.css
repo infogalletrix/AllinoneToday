@@ -1,0 +1,387 @@
+.ait-page {
+  max-width: 1120px;
+  margin: auto;
+  padding: 140px 24px 70px;
+  min-height: 65vh;
+}
+.ait-page h1 {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 1.12;
+  margin: 14px 0 22px;
+}
+.ait-page h2 {
+  margin: 8px 0 16px;
+}
+.ait-lead {
+  max-width: 780px;
+  font-size: 1.12rem;
+  line-height: 1.8;
+  margin: 20px 0 30px;
+  color: #64748b;
+}
+.ait-eyebrow {
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  font-weight: 750;
+  color: #c74128;
+  text-transform: uppercase;
+}
+.ait-panel {
+  padding: 30px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  margin: 24px 0;
+}
+.ait-panel p {
+  margin: 14px 0;
+  line-height: 1.7;
+}
+.ait-auth {
+  max-width: 560px;
+}
+.ait-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.ait-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.ait-form input,
+.ait-form textarea,
+.ait-form select,
+.ait-search input,
+.ait-search select {
+  width: 100%;
+  padding: 13px 14px;
+  min-width: 0;
+  color: #1e293b;
+}
+.ait-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.ait-form .btn-primary {
+  align-self: flex-start;
+}
+.ait-form small {
+  line-height: 1.6;
+}
+.ait-error,
+.ait-notice {
+  padding: 18px;
+  border-radius: 12px;
+  margin: 20px 0;
+  line-height: 1.7;
+}
+.ait-error {
+  background: #fff0ef;
+  border: 1px solid #fecaca;
+  color: #a32119;
+}
+.ait-notice {
+  background: #fff7e5;
+  border: 1px solid #f5db9b;
+  color: #704910;
+}
+.ait-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 22px 0;
+}
+.ait-link {
+  color: #c63e26;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ait-page button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+.ait-page button:focus-visible,
+.ait-page a:focus-visible {
+  outline: 3px solid #316afa;
+  outline-offset: 3px;
+}
+.ait-listing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 28px;
+}
+.ait-listing {
+  position: relative;
+}
+.ait-listing img {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+}
+.ait-listing-body {
+  padding: 22px;
+}
+.ait-listing-body h3 {
+  font-size: 1.1rem;
+  margin: 8px 0 14px;
+}
+.ait-listing-body strong {
+  font-size: 1.25rem;
+}
+.ait-listing-body p {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 12px;
+}
+.ait-heart {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  background: #fff;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #f95738;
+}
+.ait-empty {
+  padding: 55px 25px;
+  background: #fff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 20px;
+  text-align: center;
+  margin: 30px 0;
+}
+.ait-empty p {
+  margin: 16px 0 24px;
+  line-height: 1.7;
+}
+.ait-empty .btn-secondary {
+  margin-left: 10px;
+}
+.ait-home-section {
+  padding-top: 60px;
+  padding-bottom: 50px;
+}
+.ait-download-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 25px;
+  background: #fff0e8;
+  border-radius: 24px;
+  padding: 40px;
+  margin-top: 55px;
+}
+.ait-download-banner h2 {
+  margin: 12px 0;
+}
+.ait-download-banner p {
+  line-height: 1.7;
+  max-width: 660px;
+}
+.ait-search {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  padding: 20px;
+  border-radius: 16px;
+  margin-top: 28px;
+}
+.ait-search input:first-child {
+  flex: 2;
+  min-width: 220px;
+}
+.ait-search input {
+  flex: 1;
+  min-width: 120px;
+}
+.ait-search select {
+  width: auto;
+  flex: 1;
+  min-width: 140px;
+}
+.ait-result-count {
+  margin-top: 25px;
+  color: #64748b;
+}
+.ait-detail {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 30px;
+  margin: 30px 0;
+}
+.ait-detail-image {
+  width: 100%;
+  height: 500px;
+  object-fit: contain;
+  border-radius: 20px;
+  background: #e9edf2;
+}
+.ait-detail .ait-panel {
+  margin: 0;
+}
+.ait-detail h1 {
+  font-size: 2.2rem;
+}
+.ait-price {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+.ait-safety {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+.ait-description {
+  white-space: pre-wrap;
+}
+.ait-messages {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 24px;
+}
+.ait-conversation {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  gap: 8px;
+  padding: 18px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+}
+.ait-conversation.selected {
+  background: #fff0e8;
+}
+.ait-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 450px;
+  overflow: auto;
+  padding: 20px 0;
+}
+.ait-chat p {
+  background: #f1f5f9;
+  border-radius: 12px;
+  padding: 15px;
+  max-width: 85%;
+  white-space: pre-wrap;
+  align-self: flex-start;
+  margin: 0;
+}
+.ait-chat p.mine {
+  background: #fff0e8;
+  align-self: flex-end;
+}
+.ait-chat small {
+  display: block;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+.ait-prose {
+  max-width: 900px;
+}
+.ait-prose h2 {
+  margin-top: 30px;
+}
+.ait-prose p {
+  line-height: 1.9;
+}
+.modal-card .ait-form {
+  padding: 25px;
+}
+.ait-page dl div {
+  display: flex;
+  gap: 25px;
+  margin: 12px 0;
+}
+.ait-page dt {
+  font-weight: 700;
+}
+.figma-navbar-brand .figma-brand-text {
+  font-size: 1.3rem !important;
+}
+.navbar-root {
+  background: #14171c !important;
+}
+.ait-panel .btn-primary {
+  margin-top: 8px;
+}
+@media (max-width: 900px) {
+  .ait-listing-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ait-detail {
+    grid-template-columns: 1fr;
+  }
+  .ait-messages {
+    grid-template-columns: 1fr;
+  }
+  .ait-download-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .figma-desktop-nav {
+    gap: 15px !important;
+  }
+  .ait-detail-image {
+    height: 380px;
+  }
+}
+@media (max-width: 600px) {
+  .ait-page {
+    padding: 115px 16px 45px;
+  }
+  .ait-panel {
+    padding: 22px;
+  }
+  .ait-form-grid,
+  .ait-listing-grid {
+    grid-template-columns: 1fr;
+  }
+  .ait-search {
+    padding: 14px;
+  }
+  .ait-home-section {
+    padding: 45px 16px;
+  }
+  .ait-download-banner {
+    padding: 28px;
+  }
+  .ait-empty .btn-secondary {
+    margin: 12px 0 0;
+  }
+  .section-header {
+    gap: 16px;
+    align-items: start;
+  }
+  .section-title {
+    font-size: 1.5rem;
+  }
+  .ait-detail-image {
+    height: 300px;
+  }
+  .ait-actions .btn-primary,
+  .ait-actions .btn-secondary {
+    width: 100%;
+  }
+  .ait-chat p {
+    max-width: 95%;
+  }
+}

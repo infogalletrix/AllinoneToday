@@ -1,121 +1,111 @@
-import React, { useState } from 'react';
-import { X, Send, Calendar, Phone, CheckCircle, ShieldCheck } from 'lucide-react';
-import { sendInquiry } from '../../api/client';
-import './ContactSellerModal.css';
-
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { X } from "lucide-react";
+import { useAccount } from "../../AccountContext";
+import { sendInquiry } from "../../api/client";
+import "./ContactSellerModal.css";
 export default function ContactSellerModal({ isOpen, onClose, listing }) {
-  const [name, setName] = useState('Alex Morgan');
-  const [phone, setPhone] = useState('+91 98470 12345');
-  const [message, setMessage] = useState(
-    listing ? `Hi, I am interested in your ${listing.title}. Is it available for an inspection/test drive?` : ''
-  );
-  const [preferredDate, setPreferredDate] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [sent, setSent] = useState(false);
-
+  const { user } = useAccount(),
+    [phone, setPhone] = useState(""),
+    [message, setMessage] = useState(""),
+    [error, setError] = useState(""),
+    [sent, setSent] = useState(false),
+    [busy, setBusy] = useState(false);
+  useEffect(() => {
+    setPhone(user?.phone || "");
+    setMessage(
+      listing
+        ? `Hi, I’m interested in ${listing.title}. Is it still available?`
+        : "",
+    );
+    setError("");
+    setSent(false);
+  }, [listing, user]);
   if (!isOpen || !listing) return null;
-
-  const handleSubmit = async (e) => {
+  async function submit(e) {
     e.preventDefault();
-    setSubmitting(true);
-    await sendInquiry({
-      listing_id: listing.id,
-      item_tag: listing.title,
-      sender_name: name,
-      phone,
-      message,
-      preferred_date: preferredDate
-    });
-    setSubmitting(false);
-    setSent(true);
-
-    setTimeout(() => {
-      setSent(false);
-      onClose();
-    }, 1800);
-  };
-
+    setBusy(true);
+    setError("");
+    try {
+      await sendInquiry({ listing_id: listing.id, phone, message });
+      setSent(true);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
-    <div className="modal-backdrop">
-      <div className="modal-card">
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="contact-title"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-header">
-          <div>
-            <h3 className="modal-title">Contact Seller & Book Drive</h3>
-            <p className="modal-sub">Direct message to {listing.seller_name || 'Hyundai Auto Hub'}</p>
-          </div>
-          <button onClick={onClose} className="modal-close-btn" aria-label="Close modal">
-            <X size={20} />
+          <h2 id="contact-title">Contact {listing.seller_name || "seller"}</h2>
+          <button onClick={onClose} aria-label="Close">
+            <X />
           </button>
         </div>
-
-        {sent ? (
-          <div className="modal-success-state">
-            <CheckCircle size={48} className="success-icon" />
-            <h4>Message Sent to Seller!</h4>
-            <p>The dealer will call or message you back shortly.</p>
+        {!user ? (
+          <>
+            <p>Sign in to send a message and keep track of replies.</p>
+            <Link
+              className="btn-primary"
+              to={"/account?next=/listings/" + listing.id}
+              onClick={onClose}
+            >
+              Sign in
+            </Link>
+          </>
+        ) : sent ? (
+          <div className="ait-form">
+            <h3>Your inquiry has been delivered.</h3>
+            <Link className="btn-primary" to="/messages" onClick={onClose}>
+              Open messages
+            </Link>
+            <button className="btn-secondary" onClick={onClose}>
+              Close
+            </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="modal-form">
-            <div className="target-listing-preview">
-              <span className="preview-label">Inquiring about:</span>
-              <span className="preview-title">{listing.title} ({listing.formatted_price || listing.price})</span>
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label>Your Name *</label>
-                <input 
-                  type="text" 
-                  value={name} 
-                  onChange={(e) => setName(e.target.value)} 
-                  required 
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Your Phone *</label>
-                <input 
-                  type="tel" 
-                  value={phone} 
-                  onChange={(e) => setPhone(e.target.value)} 
-                  required 
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>Preferred Test Drive Date (Optional)</label>
-              <input 
-                type="date" 
-                value={preferredDate} 
-                onChange={(e) => setPreferredDate(e.target.value)} 
+          <form onSubmit={submit} className="ait-form">
+            <p>About: {listing.title}</p>
+            <label>
+              Your phone
+              <input
+                required
+                type="tel"
+                minLength={7}
+                maxLength={30}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
               />
-            </div>
-
-            <div className="form-group">
-              <label>Message *</label>
-              <textarea 
-                rows="3" 
-                value={message} 
-                onChange={(e) => setMessage(e.target.value)} 
-                required 
+            </label>
+            <label>
+              Message
+              <textarea
+                required
+                minLength={2}
+                maxLength={2000}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
               />
-            </div>
-
-            <div className="verified-buyer-guarantee">
-              <ShieldCheck size={16} className="guarantee-icon" />
-              <span>Your phone number is shared only with verified dealers. Zero spam.</span>
-            </div>
-
-            <div className="modal-actions">
-              <button type="button" onClick={onClose} className="btn-secondary">
-                Cancel
-              </button>
-              <button type="submit" disabled={submitting} className="btn-primary">
-                <Send size={16} />
-                <span>{submitting ? 'Sending...' : 'Send Inquiry'}</span>
-              </button>
-            </div>
+            </label>
+            <p>
+              Your name and phone are shared with this seller when you submit.
+            </p>
+            {error && (
+              <p role="alert" className="ait-error">
+                {error}
+              </p>
+            )}
+            <button className="btn-primary" disabled={busy}>
+              {busy ? "Sending…" : "Send inquiry"}
+            </button>
           </form>
         )}
       </div>
