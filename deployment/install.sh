@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 022
 cd /opt/allinonetoday
 test -f incoming.tar.gz
 mkdir -p releases
@@ -18,6 +19,11 @@ if [ ! -f deployment/.env ]; then
     unset db_secret
 fi
 chmod 600 deployment/.env
+# Archives created on Windows can retain permissive modes. Web content and
+# application source must not be writable by unrelated server users.
+find web apps/platform_api -type d -exec chmod 755 {} +
+find web apps/platform_api -type f -exec chmod 644 {} +
+chmod 644 deployment/compose.yml deployment/pricing.json
 docker compose -p allinonetoday -f deployment/compose.yml --env-file deployment/.env up -d --build
 for attempt in $(seq 1 30); do
     if curl -fsS http://127.0.0.1:5088/api/health >/dev/null; then break; fi

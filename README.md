@@ -40,6 +40,10 @@ flutter build apk --release
 
 Android release builds require ignored `android/key.properties` files and a signing keystore. `tools/create-signing.mjs` generates new-project signing material on the current Windows machine without printing passwords. Back up `.local/signing` securely: the same key is required for future APK updates. Never commit or publish keys or credentials.
 
+The initial downloadable APKs are version 1.0.0, signed release builds for ARM64 phones running Android 7.0 or newer. Build them with `flutter build apk --release --target-platform android-arm64`. The public APK uses `com.galletrix.allinonetoday`; the business APK uses `com.galletrix.allinonetoday.business`. They compile against the live HTTPS API, but have not yet been tested on a physical phone.
+
+Download them from https://allinonetoday.galletrix.com/download. Local copies and unsigned iOS build ZIPs are in the ignored `artifacts` folder; signing keys are stored separately and must never be uploaded with downloads.
+
 The apps use the live HTTPS origin by default. Override it with `--dart-define=PLATFORM_URL=https://your-host`. Local Vite development proxies `/api` and `/uploads` to port 8080. Copy the API `.env.example` privately and provide a PostgreSQL connection.
 
 `tools/api-smoke.mjs` checks account creation, passwords, uploads, listing ownership, private inquiries, unpaid-shop restrictions, fake-payment rejection and reports. It creates temporary accounts, then removes their personal data and hides test listings. Prefer staging for subsequent runs. `tools/web-smoke.mjs` checks Chrome desktop and mobile layouts; install Playwright locally to use it.

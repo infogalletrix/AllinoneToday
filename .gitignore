@@ -44,3 +44,4 @@ scratch/
 **/android/gradlew.bat
 **/android/gradle/wrapper/gradle-wrapper.jar
 **/unsigned-ios.zip
+**/.kotlin/

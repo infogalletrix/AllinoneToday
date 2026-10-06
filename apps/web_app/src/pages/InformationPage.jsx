@@ -8,7 +8,10 @@ export default function InformationPage() {
           <>
             <p className="ait-eyebrow">ALL IN ONE TODAY APPS</p>
             <h1>Your next discovery is a tap away.</h1>
-            <p>Two Android apps. One connected marketplace.</p>
+            <p>
+              Two Android apps. One connected marketplace. These first-release
+              APKs support 64-bit ARM phones running Android 7.0 or newer.
+            </p>
             <div className="ait-form-grid">
               <article className="ait-panel">
                 <h2>For everyone</h2>
