@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -11,6 +12,7 @@ const platformUrl = String.fromEnvironment(
   defaultValue: 'https://allinonetoday.galletrix.com',
 );
 const paymentTestBuild = bool.fromEnvironment('PAYMENT_TEST_BUILD');
+const browserPreviewBuild = bool.fromEnvironment('APP_BROWSER_PREVIEW');
 List<String> categories = [
   'Vehicles',
   'Property',
@@ -24,6 +26,7 @@ List<String> categories = [
 typedef Json = Map<String, dynamic>;
 
 class MarketplaceApi {
+  bool get browserPreview => false;
   static bool _googleInitialized = false;
   final http.Client client;
   final FlutterSecureStorage storage;
@@ -54,6 +57,9 @@ class MarketplaceApi {
   Future<dynamic> get(String path) => send('GET', path);
   Future<dynamic> post(String path, Json data) => send('POST', path, data);
   Future<dynamic> send(String method, String path, [Json? data]) async {
+    if (browserPreviewBuild) {
+      throw StateError('Browser previews must not connect to a real API.');
+    }
     final request = http.Request(method, Uri.parse('$platformUrl/api$path'));
     request.headers['Content-Type'] = 'application/json';
     if (token != null) request.headers['Authorization'] = 'Bearer $token';
@@ -95,7 +101,7 @@ class MarketplaceApi {
             as String?;
     if (webId == null ||
         webId.isEmpty ||
-        (Platform.isIOS && (iosId == null || iosId.isEmpty))) {
+        (!kIsWeb && Platform.isIOS && (iosId == null || iosId.isEmpty))) {
       throw ApiError(
         'Google sign-in is awaiting OAuth configuration. Use email login for now.',
         503,
@@ -104,7 +110,7 @@ class MarketplaceApi {
     if (!_googleInitialized) {
       await GoogleSignIn.instance.initialize(
         serverClientId: webId,
-        clientId: Platform.isIOS ? iosId : null,
+        clientId: !kIsWeb && Platform.isIOS ? iosId : null,
       );
       _googleInitialized = true;
     }
@@ -129,7 +135,7 @@ class MarketplaceApi {
   }
 
   Future<void> clearSession() async {
-    if (Platform.isAndroid || Platform.isIOS) {
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
       try {
         await WebViewCookieManager().clearCookies();
       } catch (_) {
@@ -142,6 +148,9 @@ class MarketplaceApi {
   }
 
   Future<String> upload(XFile file) async {
+    if (browserPreviewBuild) {
+      throw StateError('Browser previews must not upload to a real API.');
+    }
     final bytes = await file.readAsBytes();
     if (bytes.length > 8 * 1024 * 1024) {
       throw ApiError('Choose a photo smaller than 8 MB.', 400);

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
@@ -9,6 +10,9 @@ import 'owner_controls.dart';
 
 const orange = Color(0xFFF95738), ink = Color(0xFF14171C);
 Future<void> runMarketplace({bool business = false}) async {
+  if (browserPreviewBuild) {
+    throw StateError('Use the isolated browser preview entry point.');
+  }
   if (paymentTestBuild && !platformUrl.endsWith('/payment-test')) {
     throw StateError(
       'Payment test builds must use the isolated payment-test API.',
@@ -21,18 +25,27 @@ Future<void> runMarketplace({bool business = false}) async {
 class MarketplaceApp extends StatelessWidget {
   final bool business;
   final MarketplaceApi? api;
-  const MarketplaceApp({super.key, this.business = false, this.api});
+  final TransitionBuilder? previewFrame;
+  const MarketplaceApp({
+    super.key,
+    this.business = false,
+    this.api,
+    this.previewFrame,
+  });
   @override
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
-    builder: (context, child) => paymentTestBuild
-        ? Banner(
-            message: 'TEST MODE',
-            location: BannerLocation.topEnd,
-            color: Colors.red.shade800,
-            child: child!,
-          )
-        : child!,
+    builder: (context, child) {
+      final content = paymentTestBuild
+          ? Banner(
+              message: 'TEST MODE',
+              location: BannerLocation.topEnd,
+              color: Colors.red.shade800,
+              child: child!,
+            )
+          : child!;
+      return previewFrame?.call(context, content) ?? content;
+    },
     title: business ? 'All in One Business' : 'All in One Today',
     theme: ThemeData(
       useMaterial3: true,
@@ -1522,6 +1535,7 @@ class _ConversationState extends State<ConversationPage> {
                 ),
                 const SizedBox(width: 10),
                 IconButton.filled(
+                  tooltip: 'Send reply',
                   onPressed: busy ? null : send,
                   icon: const Icon(Icons.send),
                 ),
@@ -1847,12 +1861,12 @@ class _ShopState extends State<ShopDashboard> {
   String category = categories.isEmpty ? '' : categories.first, size = 'small';
   Razorpay? razorpay;
   int quoteVersion = 0;
-  bool get ios => Platform.isIOS;
+  bool get ios => !kIsWeb && Platform.isIOS;
   @override
   void initState() {
     super.initState();
     load();
-    if (Platform.isAndroid) {
+    if (!kIsWeb && Platform.isAndroid) {
       razorpay = Razorpay();
       razorpay!.on(Razorpay.EVENT_PAYMENT_SUCCESS, onPaid);
       razorpay!.on(Razorpay.EVENT_PAYMENT_ERROR, (
@@ -1940,6 +1954,26 @@ class _ShopState extends State<ShopDashboard> {
         throw ApiError(offer['message'], 409);
       }
       if (!mounted) return;
+      if (widget.api.browserPreview) {
+        if (await confirm(
+          context,
+          'Simulate subscription?',
+          'PREVIEW ONLY: No payment, Razorpay checkout or AutoPay mandate will be created. This marks only this sample shop as subscribed until you reset or refresh the preview.',
+        )) {
+          await widget.api.post('/preview/subscription', {
+            'shopId': shop['id'],
+          });
+          if (mounted) {
+            setState(
+              () => message =
+                  'Preview subscription simulated. No money was charged.',
+            );
+          }
+          await load();
+        }
+        if (mounted) setState(() => busy = false);
+        return;
+      }
       if (!await confirm(
         context,
         paymentTestBuild ? 'Test monthly AutoPay?' : 'Set up monthly AutoPay?',
@@ -2243,7 +2277,11 @@ class _ShopState extends State<ShopDashboard> {
                             ? null
                             : () => pay(Map<String, dynamic>.from(s)),
                         child: Text(
-                          busy ? 'Please wait…' : 'Continue to secure payment',
+                          busy
+                              ? 'Please wait…'
+                              : widget.api.browserPreview
+                              ? 'Simulate subscription (preview)'
+                              : 'Continue to secure payment',
                         ),
                       ),
                     TextButton(
@@ -2387,7 +2425,9 @@ class _ShopState extends State<ShopDashboard> {
                               : price?['requiresReview'] == true
                               ? 'Save shop & request a quote'
                               : enabled
-                              ? 'Save shop & set up AutoPay'
+                              ? widget.api.browserPreview
+                                    ? 'Save shop & simulate subscription'
+                                    : 'Save shop & set up AutoPay'
                               : 'Save shop details',
                         ),
                       ),
