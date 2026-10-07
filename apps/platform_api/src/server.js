@@ -152,10 +152,11 @@ app.get('/api/listings/:id',async(req,res)=> { const item=(await pool.query(`${l
 app.get('/api/vehicles/:id',async(req,res)=> { const item=(await pool.query(`${listingSelect} WHERE l.id=$1 AND ${publicListing}`,[uuid.parse(req.params.id)])).rows[0]; if(!item) throw fail(404,'Listing not found.'); ok(res,{...item,...item.specifications,listing_id:item.id,price:item.formatted_price,highlights:[]}); });
 const listingSchema=z.object({ title:text(3,150),price:z.number().min(0).max(99999999999),location:text(2,180),category:text(2,50),subcategory:z.string().max(80).default(''),description:text(10,5000),image_path:z.string().regex(/^\/uploads\/[a-f0-9-]+\.(jpg|png|webp)$/).max(200),shop_id:uuid.nullable().optional(),specifications:z.record(z.string(),z.string().max(300)).default({}) });
 app.post('/api/listings',auth,async(req,res)=> {
+  if(req.account.role!=='merchant')throw fail(403,'Only subscribed shop owners can publish listings. Public accounts are for browsing and contacting shops.');
   const p=listingSchema.parse(req.body);
   await checkCategory(p.category);
   if(!(await pool.query('SELECT path FROM uploads WHERE path=$1 AND account_id=$2',[p.image_path,req.account.id])).rowCount) throw fail(400,'Upload your own listing photo first.');
-  if(req.account.role==='merchant' && !p.shop_id) throw fail(403,'Choose your subscribed shop before publishing.');
+  if(!p.shop_id) throw fail(403,'Choose your subscribed shop before publishing.');
   if(p.shop_id) {
     const shop=(await pool.query("SELECT s.id FROM shops s WHERE s.id=$1 AND s.owner_id=$2 AND s.status='active' AND EXISTS(SELECT 1 FROM subscriptions WHERE shop_id=s.id AND paid_until>now())",[p.shop_id,req.account.id])).rows[0];
     if(!shop) throw fail(403,'Your shop subscription must be active before publishing.');
@@ -170,7 +171,7 @@ app.get('/api/seller/metrics',auth,async(req,res)=> { const listings=Number((awa
 const upload=multer({ storage:multer.memoryStorage(),limits:{ fileSize:8*1024*1024,files:1 } });
 const uploadLimit=rateLimit({windowMs:3600000,limit:30,standardHeaders:'draft-8',legacyHeaders:false});
 let uploadsInProgress=0;
-app.post('/api/uploads',auth,uploadLimit,(req,res,next)=>{if(uploadsInProgress>=2)throw fail(429,'Photo processing is busy. Please retry shortly.');uploadsInProgress++;let released=false;const release=()=>{if(!released){released=true;uploadsInProgress--;}};res.once('finish',release);res.once('close',release);next();},upload.single('image'),async(req,res)=> {
+app.post('/api/uploads',auth,(req,res,next)=>{if(!['merchant','admin'].includes(req.account.role))throw fail(403,'Photo uploads are restricted to shop owners and the product owner.');next();},uploadLimit,(req,res,next)=>{if(uploadsInProgress>=2)throw fail(429,'Photo processing is busy. Please retry shortly.');uploadsInProgress++;let released=false;const release=()=>{if(!released){released=true;uploadsInProgress--;}};res.once('finish',release);res.once('close',release);next();},upload.single('image'),async(req,res)=> {
   const data=req.file?.buffer; if(!data) throw fail(400,'Choose an image.');
   const ext=data.subarray(0,3).equals(Buffer.from([255,216,255]))?'jpg':data.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))?'png':data.toString('ascii',0,4)==='RIFF' && data.toString('ascii',8,12)==='WEBP'?'webp':null;
   if(!ext) throw fail(400,'Use a JPEG, PNG, or WebP photo.');

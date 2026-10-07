@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {execFileSync} from 'node:child_process';
+import {randomUUID} from 'node:crypto';
 const base=process.env.SMOKE_URL;
 if(base!=='http://127.0.0.1:5089')throw Error('Owner write tests only run against isolated staging, never production.');
-async function call(method,path,body,token,status=200){const r=await fetch(base+'/api'+path,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:body===undefined?undefined:JSON.stringify(body)});const value=await r.json();assert.equal(r.status,status,method+' '+path+': '+value.message);return value.data;}
+async function call(method,path,body,token,status=200){const r=await fetch(base+'/api'+path,{method,headers:{...(body instanceof FormData?{}:{'Content-Type':'application/json'}),...(token?{Authorization:'Bearer '+token}:{})},body:body===undefined?undefined:body instanceof FormData?body:JSON.stringify(body)});const value=await r.json();assert.equal(r.status,status,method+' '+path+': '+value.message);return value.data;}
 const password='StagingOnlyStrong1!';
 const owner=await call('POST','/auth/register',{name:'Staging owner',email:'verify-owner@example.invalid',password,role:'merchant'},null,201);
 await call('POST','/admin/claim-owner',{code:'incorrect-code'.repeat(4)},owner.token,403);
@@ -9,6 +12,7 @@ const admin=await call('POST','/admin/claim-owner',{code:'staging-only-owner-set
 assert.equal(admin.user.role,'admin');
 const buyer=await call('POST','/auth/register',{name:'Staging buyer',email:'verify-buyer@example.invalid',password,role:'buyer'},null,201);
 const merchant=await call('POST','/auth/register',{name:'Staging merchant',email:'verify-merchant@example.invalid',password,role:'merchant'},null,201);
+await call('POST','/listings',{},buyer.token,403);
 await call('GET','/admin/website',undefined,buyer.token,403);
 await call('POST','/admin/claim-owner',{code:'staging-only-owner-setup-012345678901234567890123456789'},admin.token,409);
 const category=await call('POST','/admin/categories',{name:'Textiles',slug:'textiles',subtitle:'Staging only'},admin.token);
@@ -27,6 +31,33 @@ await call('PATCH','/admin/shops/'+shop.id,{status:'active'},admin.token,409);
 assert.equal((await call('GET','/shops')).length,0);
 await call('PATCH','/admin/categories/'+category.id,{name:'Fashion',slug:'fashion',enabled:true},admin.token);
 const updatedSite=await call('GET','/site');assert(updatedSite.popular.some(item=>item.category==='Fashion'));assert.equal((await call('GET','/shops/mine',undefined,merchant.token))[0].category,'Fashion');
+const png=await readFile(new URL('../apps/mobile_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@1x.png',import.meta.url));
+const upload=new FormData();upload.append('image',new Blob([png],{type:'image/png'}),'fixture.png');
+await call('POST','/uploads',upload,buyer.token,403);
+const image=await call('POST','/uploads',upload,merchant.token,201);
+const payload={title:'Isolated staged item',price:100,location:'Staging location',category:'Fashion',description:'Isolated paid-shop fixture. Never inserted in production.',image_path:image.url,shop_id:shop.id};
+await call('POST','/listings',payload,merchant.token,403);
+// Privileged database fixture ONLY in the disposable staging database. This is
+// not a payment API bypass and never connects to the production database.
+for(const id of [shop.id,merchant.user.id])assert.match(id,/^[a-f0-9-]{36}$/);
+execFileSync('docker',['exec','allinonetoday-db-1','psql','-U','allinonetoday','-d','allinonetoday_verify','-v','ON_ERROR_STOP=1','-c',`INSERT INTO subscriptions(id,shop_id,account_id,amount_minor,period,quote,status,paid_until) VALUES('${randomUUID()}','${shop.id}','${merchant.user.id}',149900,'month','{"amountMinor":149900,"period":"month","version":"isolated-fixture"}','active',now()+interval '1 month'); UPDATE shops SET status='active' WHERE id='${shop.id}';`],{stdio:'pipe'});
+await call('PUT',`/admin/assessments/${shop.id}`,{amountMinor:199900,reason:'An active agreed price must never be silently changed.',revision:2},admin.token,409);
+const listing=await call('POST','/listings',payload,merchant.token,201);
+await call('GET','/listings/'+listing.id);
+await call('DELETE','/listings/'+listing.id,undefined,buyer.token,404);
+const inquiry=await call('POST','/conversations',{listing_id:listing.id,phone:'9999999999',message:'Staging-only inquiry.'},buyer.token,201);
+await call('GET',`/conversations/${inquiry.id}/messages`,undefined,admin.token,404);
+await call('POST',`/conversations/${inquiry.id}/messages`,{content:'Staged reply.'},merchant.token,201);
+assert.equal((await call('GET',`/conversations/${inquiry.id}/messages`,undefined,buyer.token)).length,2);
+await call('POST','/blocks',{accountId:merchant.user.id},buyer.token);
+await call('POST',`/conversations/${inquiry.id}/messages`,{content:'Must be blocked.'},merchant.token,403);
+await call('DELETE','/blocks/'+merchant.user.id,undefined,buyer.token);
+await call('POST','/reports',{listingId:listing.id,reason:'Staging-only safety review.'},buyer.token,201);
+assert.equal((await call('GET','/admin/reports',undefined,admin.token)).length,1);
+await call('PATCH','/admin/shops/'+shop.id,{status:'inactive'},admin.token);await call('GET','/listings/'+listing.id,undefined,null,404);
+await call('PATCH','/admin/shops/'+shop.id,{status:'active'},admin.token);await call('GET','/listings/'+listing.id);
+await call('DELETE','/listings/'+listing.id,undefined,merchant.token);await call('GET','/listings/'+listing.id,undefined,null,404);
+assert.equal((await call('GET','/admin/reports',undefined,admin.token)).length,0);
 const grant=await call('POST','/auth/web-handoff',{},admin.token);
 let response=await fetch(base+'/api/auth/web-handoff',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({code:grant.code}),redirect:'manual'});
 assert.equal(response.status,303);assert.equal(response.headers.get('location'),'/admin?embedded=1');assert(response.headers.get('set-cookie').includes('HttpOnly'));

@@ -13,7 +13,7 @@ export function adminRouter(pool) {
   const audit=(req,action,target)=>pool.query('INSERT INTO admin_audit(id,actor_id,action,target) VALUES($1,$2,$3,$4)',[randomUUID(),req.account.id,action,String(target)]);
   const offset=req=>Math.max(0,Math.min(Number(req.query.offset)||0,100000));
   router.get('/overview',async(req,res)=>{
-    const totals=(await pool.query("SELECT (SELECT count(*)::int FROM accounts WHERE NOT email LIKE 'deleted-%@invalid.example') accounts,(SELECT count(*)::int FROM shops) shops,(SELECT count(*)::int FROM listings WHERE status='active') listings,(SELECT count(*)::int FROM reports WHERE status='pending') reports,(SELECT count(*)::int FROM subscriptions WHERE paid_until>now()) paid_subscriptions")).rows[0];
+    const totals=(await pool.query("SELECT (SELECT count(*)::int FROM accounts WHERE NOT email LIKE 'deleted-%@invalid.example') accounts,(SELECT count(*)::int FROM shops s JOIN accounts a ON a.id=s.owner_id WHERE NOT a.email LIKE 'deleted-%@invalid.example') shops,(SELECT count(*)::int FROM listings WHERE status='active') listings,(SELECT count(*)::int FROM reports r JOIN listings l ON l.id=r.listing_id WHERE r.status='pending' AND l.status='active') reports,(SELECT count(*)::int FROM subscriptions WHERE paid_until>now()) paid_subscriptions")).rows[0];
     ok(res,{...totals,billingEnabled:billingEnabled(),googleEnabled:Boolean(process.env.GOOGLE_WEB_CLIENT_ID),aiEnabled:aiConfigured()});
   });
   router.get('/categories',async(req,res)=>ok(res,(await pool.query('SELECT * FROM marketplace_categories ORDER BY position,name')).rows));
@@ -49,7 +49,7 @@ export function adminRouter(pool) {
     if(!row)throw Object.assign(new Error('Account not found or protected owner account.'),{status:404});
     if(p.suspended)await pool.query('DELETE FROM sessions WHERE account_id=$1',[req.params.id]);await audit(req,'account.suspension',req.params.id);ok(res,row);
   });
-  router.get('/shops',async(req,res)=>ok(res,(await pool.query('SELECT s.*,a.name AS owner_name,a.email AS owner_email FROM shops s JOIN accounts a ON a.id=s.owner_id ORDER BY s.created_at DESC LIMIT 100 OFFSET $1',[offset(req)])).rows));
+  router.get('/shops',async(req,res)=>ok(res,(await pool.query("SELECT s.*,a.name AS owner_name,a.email AS owner_email FROM shops s JOIN accounts a ON a.id=s.owner_id WHERE NOT a.email LIKE 'deleted-%@invalid.example' ORDER BY s.created_at DESC LIMIT 100 OFFSET $1",[offset(req)])).rows));
   router.patch('/shops/:id',async(req,res)=>{
     const p=z.object({status:z.enum(['active','inactive'])}).parse(req.body),id=z.string().uuid().parse(req.params.id);
     if(p.status==='active'&&!(await pool.query('SELECT 1 FROM subscriptions WHERE shop_id=$1 AND paid_until>now()',[id])).rowCount)throw Object.assign(new Error('Only a paid shop can be published. Payment access cannot be bypassed.'),{status:409});
@@ -62,14 +62,14 @@ export function adminRouter(pool) {
   });
   router.get('/subscriptions',async(req,res)=>ok(res,(await pool.query('SELECT b.id,b.shop_id,s.name AS shop_name,a.email,b.provider_id,b.amount_minor,b.currency,b.period,b.status,b.paid_until,b.created_at FROM subscriptions b JOIN shops s ON s.id=b.shop_id JOIN accounts a ON a.id=b.account_id ORDER BY b.created_at DESC LIMIT 100 OFFSET $1',[offset(req)])).rows));
   router.get('/audit',async(req,res)=>ok(res,(await pool.query('SELECT u.action,u.target,u.created_at,a.name AS actor FROM admin_audit u JOIN accounts a ON a.id=u.actor_id ORDER BY u.created_at DESC LIMIT 100 OFFSET $1',[offset(req)])).rows));
-  router.get('/reports',async(req,res)=>ok(res,(await pool.query("SELECT r.*,l.title FROM reports r JOIN listings l ON l.id=r.listing_id WHERE r.status='pending' ORDER BY r.created_at")).rows));
+  router.get('/reports',async(req,res)=>ok(res,(await pool.query("SELECT r.*,l.title FROM reports r JOIN listings l ON l.id=r.listing_id WHERE r.status='pending' AND l.status='active' ORDER BY r.created_at")).rows));
   router.post('/reports/:id',async(req,res)=>{
     const p=z.object({remove:z.boolean()}).parse(req.body),id=z.string().uuid().parse(req.params.id);
     const report=(await pool.query('UPDATE reports SET status=$1 WHERE id=$2 RETURNING *',[p.remove?'removed':'reviewed',id])).rows[0];
     if(!report)throw Object.assign(new Error('Report not found.'),{status:404});if(p.remove)await pool.query("UPDATE listings SET status='removed' WHERE id=$1",[report.listing_id]);await audit(req,'report.review',id);ok(res,null);
   });
   router.get('/pricing',(req,res)=>ok(res,readPricing()));
-  router.get('/assessments',async(req,res)=>ok(res,(await pool.query('SELECT q.*,s.name,s.category,s.branches,s.size,s.expected_photos FROM shop_assessments q JOIN shops s ON s.id=q.shop_id ORDER BY q.updated_at DESC LIMIT 100 OFFSET $1',[offset(req)])).rows));
+  router.get('/assessments',async(req,res)=>ok(res,(await pool.query("SELECT q.*,s.name,s.category,s.branches,s.size,s.expected_photos FROM shop_assessments q JOIN shops s ON s.id=q.shop_id JOIN accounts a ON a.id=s.owner_id WHERE NOT a.email LIKE 'deleted-%@invalid.example' ORDER BY q.updated_at DESC LIMIT 100 OFFSET $1",[offset(req)])).rows));
   router.post('/assessments/:id/suggest',async(req,res)=>{
     const id=z.string().uuid().parse(req.params.id);
     const shop=(await pool.query('SELECT * FROM shops WHERE id=$1',[id])).rows[0];if(!shop)throw Object.assign(new Error('Shop not found.'),{status:404});
