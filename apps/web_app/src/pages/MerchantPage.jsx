@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAccount } from "../AccountContext";
-import { categories, request, post } from "../api/client";
+import { request, post } from "../api/client";
+import {useSite} from '../SiteContext';
 let sdk;
 function loadRazorpay() {
   return (sdk ||= new Promise((resolve, reject) => {
@@ -17,6 +18,7 @@ function loadRazorpay() {
   }));
 }
 export default function MerchantPage() {
+  const {categories}=useSite();
   const { user, loading } = useAccount(),
     [shops, setShops] = useState([]),
     [pricing, setPricing] = useState(null),
@@ -31,13 +33,15 @@ export default function MerchantPage() {
     description: "",
     category: "Vehicles",
     branches: 1,
+    size:'small',
+    expected_photos:100,
   });
   const field = (k) => ({
     value: form[k],
     onChange: (e) =>
       setForm({
         ...form,
-        [k]: k === "branches" ? Number(e.target.value) : e.target.value,
+        [k]: ['branches','expected_photos'].includes(k) ? Number(e.target.value) : e.target.value,
       }),
   });
   async function refresh() {
@@ -54,10 +58,12 @@ export default function MerchantPage() {
   useEffect(() => {
     let live = true;
     setPrice(null);
-    if (pricing?.approved)
+    if (form.category)
       post("/billing/quote", {
         category: form.category,
         branches: form.branches,
+        size:form.size,
+        expected_photos:form.expected_photos,
       })
         .then((p) => {
           if (live) setPrice(p);
@@ -68,12 +74,15 @@ export default function MerchantPage() {
     return () => {
       live = false;
     };
-  }, [pricing, form.category, form.branches]);
+  }, [pricing, form.category, form.branches,form.size,form.expected_photos]);
   async function checkout(shop) {
     setError("");
     setBusy(true);
     try {
-      const c = await post("/billing/checkout", { shopId: shop.id });
+      const offer = await request('/shops/'+shop.id+'/quote');
+      if(offer.requiresReview)throw new Error(offer.message);
+      if(!window.confirm(`Authorize ₹${(offer.amountMinor/100).toLocaleString('en-IN')} every month for ${shop.name}? AutoPay renews until canceled. Review the mandate in Razorpay before approving.`)){setBusy(false);return;}
+      const c = await post("/billing/checkout", { shopId: shop.id,acceptedAmountMinor:offer.amountMinor });
       await loadRazorpay();
       new window.Razorpay({
         key: c.key,
@@ -118,7 +127,8 @@ export default function MerchantPage() {
     try {
       const shop = await post("/shops", form);
       await refresh();
-      await checkout(shop);
+      if(pricing?.checkoutEnabled && !price?.requiresReview)await checkout(shop);
+      else {setMessage(price?.requiresReview?'Shop saved. The product owner will review your monthly quote. Refresh status before continuing to payment.':'Shop saved. Payments will open after private Razorpay configuration.');setBusy(false);}
     } catch (e) {
       setError(e.message);
       setBusy(false);
@@ -155,8 +165,8 @@ export default function MerchantPage() {
       )}
       {!pricing?.checkoutEnabled && (
         <div className="ait-notice">
-          Shop subscriptions start from ₹499. Registration payments are not open
-          yet while the category rates and billing schedule are being finalized.
+          Small single-branch shops start from ₹499/month. Registration payments are not open
+          yet while Razorpay is being configured.
           No payment will be collected until the exact recurring amount is
           shown.
         </div>
@@ -174,8 +184,9 @@ export default function MerchantPage() {
         </div>
       ) : user.role !== "merchant" ? (
         <div className="ait-panel">
-          This account is for browsing and individual listings. Register a
+          {user.role==='admin'?<Link to="/admin">Open product-owner controls</Link>:<>This account is for browsing. Register a
           separate shop-owner account to manage a business.
+          </>}
         </div>
       ) : (
         <>
@@ -202,6 +213,8 @@ export default function MerchantPage() {
                 </p>
               )}
               <div className="ait-actions">
+                <button type="button" className="btn-secondary" onClick={async()=>{const name=window.prompt('Shop name',s.name),description=name&&window.prompt('About your shop',s.description);if(name&&description!==null)try{await request('/shops/'+s.id,{method:'PATCH',body:JSON.stringify({name,description,phone:s.phone,location:s.location,image_path:s.image_path})});await refresh();}catch(e){setError(e.message);}}}>Edit shop</button>
+                <button type="button" className="btn-secondary" onClick={async()=>{try{const q=await request('/shops/'+s.id+'/quote');setMessage(q.requiresReview?q.message:`Approved subscription: ₹${q.amountMinor/100}/month. ${q.reason||''}`);}catch(e){setError(e.message);}}}>View monthly quote</button>
                 {s.subscription?.paid_until &&
                 new Date(s.subscription.paid_until) > new Date() ? (
                   <Link className="btn-primary" to="/sell">
@@ -273,6 +286,14 @@ export default function MerchantPage() {
                   />
                 </label>
                 <label>
+                  Shop size
+                  <select {...field('size')}><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select>
+                </label>
+                <label>
+                  Expected product photos
+                  <input type="number" min={1} max={100000} required {...field('expected_photos')}/>
+                </label>
+                <label>
                   City / location
                   <input
                     required
@@ -297,7 +318,7 @@ export default function MerchantPage() {
                 <textarea maxLength={2000} rows={3} {...field("description")} />
               </label>
               <div className="ait-notice">
-                {price ? (
+                {price?.requiresReview ? price.message : price ? (
                   <>
                     Recurring subscription:{" "}
                     <strong>
@@ -319,9 +340,9 @@ export default function MerchantPage() {
               </p>
               <button
                 className="btn-primary"
-                disabled={busy || !pricing?.checkoutEnabled || !price}
+                disabled={busy || !price}
               >
-                {busy ? "Please wait…" : "Save shop & set up AutoPay"}
+                {busy ? "Please wait…" : price?.requiresReview ? 'Save shop & request a quote' : pricing?.checkoutEnabled ? "Save shop & set up AutoPay" : 'Save shop details'}
               </button>
             </form>
           )}

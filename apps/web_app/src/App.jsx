@@ -15,13 +15,14 @@ import ShopsPage from "./pages/ShopsPage";
 import ListingsPage from "./pages/ListingsPage";
 import ListingDetailPage from "./pages/ListingDetailPage";
 import AccountPage from "./pages/AccountPage";
-import AdminPage from "./pages/AdminPage";
+import AdminPage from "./pages/ProductOwnerPage";
 import MerchantPage from "./pages/MerchantPage";
 import MessagesPage from "./pages/MessagesPage";
 import SellPage from "./pages/SellPage";
 import MyListingsPage from "./pages/MyListingsPage";
 import InformationPage from "./pages/InformationPage";
 import { AccountProvider } from "./AccountContext";
+import { SiteProvider } from "./SiteContext";
 import "./production.css";
 function Application() {
   const navigate = useNavigate(),
@@ -49,9 +50,10 @@ function Application() {
   }
   const listingProps = { favorites, onToggleFavorite: toggle },
     onOpenPostAd = () => navigate("/sell");
+  const embedded=location.pathname==='/admin' && new URLSearchParams(location.search).get('embedded')==='1';
   return (
     <>
-      <Navbar onOpenPostAd={onOpenPostAd} favoritesCount={favorites.length} />
+      {!embedded && <Navbar onOpenPostAd={onOpenPostAd} favoritesCount={favorites.length} />}
       <main style={{ flex: 1 }}>
         <Routes>
           <Route
@@ -70,12 +72,13 @@ function Application() {
           />
           <Route path="/shops" element={<ShopsPage />} />
           <Route path="/account" element={<AccountPage />} />
+          <Route path="/login" element={<AccountPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/merchant" element={<MerchantPage />} />
           <Route path="/messages" element={<MessagesPage />} />
           <Route path="/sell" element={<SellPage />} />
           <Route path="/my-listings" element={<MyListingsPage />} />
-          {["download", "terms", "privacy", "safety"].map((path) => (
+          {["download", "terms", "privacy", "safety", "support"].map((path) => (
             <Route key={path} path={"/" + path} element={<InformationPage />} />
           ))}
           <Route
@@ -91,7 +94,7 @@ function Application() {
           />
         </Routes>
       </main>
-      <Footer />
+      {!embedded && <Footer />}
       <ContactSellerModal
         isOpen={!!contact}
         listing={contact}
@@ -104,7 +107,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AccountProvider>
+        <SiteProvider>
         <Application />
+        </SiteProvider>
       </AccountProvider>
     </BrowserRouter>
   );

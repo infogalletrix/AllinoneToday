@@ -1,4 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -7,7 +10,7 @@ const platformUrl = String.fromEnvironment(
   'PLATFORM_URL',
   defaultValue: 'https://allinonetoday.galletrix.com',
 );
-const categories = [
+List<String> categories = [
   'Vehicles',
   'Property',
   'Jobs',
@@ -20,6 +23,7 @@ const categories = [
 typedef Json = Map<String, dynamic>;
 
 class MarketplaceApi {
+  static bool _googleInitialized = false;
   final http.Client client;
   final FlutterSecureStorage storage;
   String? token;
@@ -28,6 +32,10 @@ class MarketplaceApi {
     : client = client ?? http.Client(),
       storage = storage ?? const FlutterSecureStorage();
   Future<void> initialize() async {
+    final remoteCategories = await get('/categories') as List;
+    categories = remoteCategories
+        .map((item) => item['name'] as String)
+        .toList();
     token = await storage.read(key: 'ait_token');
     if (token != null) {
       try {
@@ -67,9 +75,51 @@ class MarketplaceApi {
       register ? '/auth/register' : '/auth/login',
       data,
     );
+    await saveSession(Map<String, dynamic>.from(result));
+  }
+
+  Future<void> saveSession(Json result) async {
     token = result['token'];
     user = Map<String, dynamic>.from(result['user']);
     await storage.write(key: 'ait_token', value: token);
+  }
+
+  Future<void> authenticateGoogle(bool business) async {
+    final config = await get('/auth/config');
+    final webId = config['googleWebClientId'] as String?;
+    final iosId =
+        config[business
+                ? 'googleIosBusinessClientId'
+                : 'googleIosPublicClientId']
+            as String?;
+    if (webId == null ||
+        webId.isEmpty ||
+        (Platform.isIOS && (iosId == null || iosId.isEmpty))) {
+      throw ApiError(
+        'Google sign-in is awaiting OAuth configuration. Use email login for now.',
+        503,
+      );
+    }
+    if (!_googleInitialized) {
+      await GoogleSignIn.instance.initialize(
+        serverClientId: webId,
+        clientId: Platform.isIOS ? iosId : null,
+      );
+      _googleInitialized = true;
+    }
+    final account = await GoogleSignIn.instance.authenticate();
+    final idToken = account.authentication.idToken;
+    if (idToken == null) {
+      throw ApiError('Google could not verify this login. Please retry.', 401);
+    }
+    await saveSession(
+      Map<String, dynamic>.from(
+        await post('/auth/google', {
+          'idToken': idToken,
+          'role': business ? 'merchant' : 'buyer',
+        }),
+      ),
+    );
   }
 
   Future<void> logout() async {
@@ -78,6 +128,13 @@ class MarketplaceApi {
   }
 
   Future<void> clearSession() async {
+    if (Platform.isAndroid || Platform.isIOS) {
+      try {
+        await WebViewCookieManager().clearCookies();
+      } catch (_) {
+        /* No WebView may have been created. */
+      }
+    }
     token = null;
     user = null;
     await storage.delete(key: 'ait_token');

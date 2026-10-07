@@ -1,8 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import './Footer.css';
+import {useSite} from '../../SiteContext';
 
 export default function Footer() {
+  const {site,categories}=useSite();
   return (
     <footer className="footer-root-figma">
       <div className="container footer-container-figma">
@@ -13,7 +15,7 @@ export default function Footer() {
               All in One Today
             </Link>
             <p className="footer-brand-desc">
-              Your local finds, all in one place. Discover, sell and connect with people and shops near you.
+              {site.tagline}
             </p>
           </div>
 
@@ -21,11 +23,7 @@ export default function Footer() {
           <div className="footer-col-links">
             <h4 className="footer-col-head">Explore</h4>
             <ul className="footer-links-list">
-              <li><Link to="/listings?category=Vehicles">Vehicles</Link></li>
-              <li><Link to="/listings?category=Property">Property</Link></li>
-              <li><Link to="/listings?category=Jobs">Jobs</Link></li>
-              <li><Link to="/listings?category=Mobiles">Mobiles</Link></li>
-              <li><Link to="/listings?category=Services">Services</Link></li>
+              {categories.slice(0,5).map(category=><li key={category}><Link to={'/listings?category='+encodeURIComponent(category)}>{category}</Link></li>)}
             </ul>
           </div>
 
@@ -33,11 +31,10 @@ export default function Footer() {
           <div className="footer-col-links">
             <h4 className="footer-col-head">Your marketplace</h4>
             <ul className="footer-links-list">
-              <li><Link to="/merchant">Register your shop</Link></li>
-              <li><Link to="/account">Your account</Link></li>
+              <li><Link to="/login">Login</Link></li>
               <li><Link to="/messages">Messages</Link></li>
               <li><Link to="/download">Download apps</Link></li>
-              <li><a href="https://galletrix.com/contact">Contact support</a></li>
+              <li><Link to="/support">Contact support</Link></li>
             </ul>
           </div>
 
@@ -53,7 +50,8 @@ export default function Footer() {
         </div>
 
         <div className="footer-bottom-bar-clean">
-          <p className="footer-copy-text">© 2026 Galletrix · All in One Today. All rights reserved.</p>
+          <p className="footer-copy-text">© 2026 All in One Today. All rights reserved.</p>
+          <a className="ait-powered" href="https://galletrix.com" target="_blank" rel="noopener noreferrer">Powered by Galletrix Innovations</a>
         </div>
       </div>
     </footer>

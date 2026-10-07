@@ -63,3 +63,32 @@ CREATE TABLE IF NOT EXISTS blocks (
  account_id uuid NOT NULL REFERENCES accounts(id), blocked_id uuid NOT NULL REFERENCES accounts(id),
  created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(account_id,blocked_id)
 );
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS suspended boolean NOT NULL DEFAULT false;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS google_sub text UNIQUE;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS password_set boolean NOT NULL DEFAULT true;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS auth_method text NOT NULL DEFAULT 'password';
+CREATE TABLE IF NOT EXISTS marketplace_categories (
+ id text PRIMARY KEY, name text UNIQUE NOT NULL, slug text UNIQUE NOT NULL,
+ subtitle text NOT NULL DEFAULT '', image_path text NOT NULL DEFAULT '',
+ position integer NOT NULL DEFAULT 0, enabled boolean NOT NULL DEFAULT true
+);
+CREATE TABLE IF NOT EXISTS platform_settings (
+ key text PRIMARY KEY, value jsonb NOT NULL, revision integer NOT NULL DEFAULT 1,
+ updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS admin_audit (
+ id uuid PRIMARY KEY, actor_id uuid NOT NULL REFERENCES accounts(id),
+ action text NOT NULL, target text NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS web_handoffs (
+ code_hash text PRIMARY KEY, account_id uuid NOT NULL REFERENCES accounts(id),
+ expires_at timestamptz NOT NULL, auth_method text NOT NULL DEFAULT 'password'
+);
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS size text NOT NULL DEFAULT 'small';
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS expected_photos integer NOT NULL DEFAULT 100;
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS moderated_hidden boolean NOT NULL DEFAULT false;
+CREATE TABLE IF NOT EXISTS shop_assessments (
+ shop_id uuid PRIMARY KEY REFERENCES shops(id), status text NOT NULL DEFAULT 'pending',
+ suggestion jsonb, approved_amount_minor integer, reason text NOT NULL DEFAULT '',
+ revision integer NOT NULL DEFAULT 1, updated_at timestamptz NOT NULL DEFAULT now()
+);

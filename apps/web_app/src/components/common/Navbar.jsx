@@ -51,17 +51,7 @@ export default function Navbar({ onOpenPostAd, favoritesCount = 0 }) {
             <span>Message</span>
           </Link>
 
-          <Link to="/account" className="figma-nav-item">Account</Link>
-          <Link to="/merchant" className="figma-nav-item">For shops</Link>
-
-          {/* Black Pill Button: "Post an Ad" matching Figma Desktop - 71 */}
-          <button 
-            type="button"
-            onClick={onOpenPostAd}
-            className="figma-post-btn-black"
-          >
-            Post an Ad
-          </button>
+          <Link to="/login" className="figma-nav-item">Login</Link>
         </nav>
 
         {/* Mobile Toggle */}
@@ -89,17 +79,8 @@ export default function Navbar({ onOpenPostAd, favoritesCount = 0 }) {
             <span>Shops</span>
           </Link>
           <Link to="/messages" onClick={() => setMobileMenuOpen(false)}>Messages</Link>
-          <Link to="/account" onClick={() => setMobileMenuOpen(false)}>Account</Link>
-          <Link to="/merchant" onClick={() => setMobileMenuOpen(false)}>For shop owners</Link>
+          <Link to="/login" onClick={() => setMobileMenuOpen(false)}>Login</Link>
           <Link to="/download" onClick={() => setMobileMenuOpen(false)}>Download apps</Link>
-          <button 
-            type="button"
-            onClick={() => { setMobileMenuOpen(false); onOpenPostAd(); }}
-            className="figma-post-btn-black"
-            style={{ width: '100%', marginTop: '10px' }}
-          >
-            Post an Ad
-          </button>
         </div>
       )}
     </header>

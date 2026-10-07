@@ -1,7 +1,10 @@
 import { readFileSync } from 'node:fs';
 export const categories = ['Vehicles', 'Property', 'Jobs', 'Groceries', 'Electronics', 'Mobiles', 'Services', 'Furniture'];
+let savedPricing = null;
+export function setPricing(pricing) { savedPricing = pricing; }
 export function readPricing() {
-  if (!process.env.PRICING_FILE) return { approved: false, startingAmountMinor: 49900, currency: 'INR', categories: [] };
+  if (savedPricing) return savedPricing;
+  if (!process.env.PRICING_FILE) return { approved:true, version:'small-shop-monthly-v1',period:'month',startingAmountMinor:49900,currency:'INR',categories:[] };
   return JSON.parse(readFileSync(process.env.PRICING_FILE, 'utf8'));
 }
 export function quote(pricing, category, branches) {

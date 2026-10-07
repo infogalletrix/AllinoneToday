@@ -5,6 +5,7 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'api.dart';
 import 'blocked.dart';
+import 'owner_controls.dart';
 
 const orange = Color(0xFFF95738), ink = Color(0xFF14171C);
 Future<void> runMarketplace({bool business = false}) async {
@@ -110,10 +111,12 @@ class _ShellState extends State<MarketplaceShell> {
     final api = widget.api;
     final pages = widget.business
         ? <Widget>[
-            ShopDashboard(
-              api: api,
-              onAccount: () => setState(() => selected = 3),
-            ),
+            api.user?['role'] == 'admin'
+                ? OwnerControls(api: api)
+                : ShopDashboard(
+                    api: api,
+                    onAccount: () => setState(() => selected = 3),
+                  ),
             MyListings(api: api, onAccount: () => setState(() => selected = 3)),
             MessagesPage(api: api),
             AccountPage(api: api, business: true, onChange: refresh),
@@ -142,7 +145,8 @@ class _ShellState extends State<MarketplaceShell> {
         key: ValueKey('$selected:$revision'),
         child: pages[selected],
       ),
-      floatingActionButton: selected < 2
+      floatingActionButton:
+          widget.business && api.user?['role'] == 'merchant' && selected < 2
           ? FloatingActionButton.extended(
               onPressed: () async {
                 if (api.user == null) {
@@ -169,7 +173,9 @@ class _ShellState extends State<MarketplaceShell> {
             icon: Icon(
               widget.business ? Icons.storefront : Icons.explore_outlined,
             ),
-            label: widget.business ? 'My shop' : 'Discover',
+            label: widget.business
+                ? (api.user?['role'] == 'admin' ? 'Controls' : 'My shop')
+                : 'Discover',
           ),
           NavigationDestination(
             icon: Icon(
@@ -183,9 +189,9 @@ class _ShellState extends State<MarketplaceShell> {
             icon: Icon(Icons.chat_bubble_outline),
             label: 'Messages',
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            label: 'Account',
+          NavigationDestination(
+            icon: const Icon(Icons.person_outline),
+            label: api.user == null ? 'Login' : 'Profile',
           ),
         ],
       ),
@@ -259,8 +265,9 @@ Future<String?> ask(
   String title,
   String label, {
   bool secret = false,
+  String initial = '',
 }) async {
-  final c = TextEditingController();
+  final c = TextEditingController(text: initial);
   final result = await showDialog<String>(
     context: context,
     builder: (ctx) => AlertDialog(
@@ -372,19 +379,65 @@ class _AccountState extends State<AccountPage> {
       return;
     }
     if (!mounted) return;
+    final googleOnly = widget.api.user?['passwordSet'] == false;
+    if (googleOnly) {
+      try {
+        await widget.api.authenticateGoogle(widget.business);
+      } catch (e) {
+        if (mounted) notify(context, '$e');
+        return;
+      }
+      if (!mounted) return;
+    }
     final value = await ask(
       context,
       'Confirm deletion',
-      'Password',
-      secret: true,
+      googleOnly ? 'Type DELETE' : 'Password',
+      secret: !googleOnly,
     );
     if (value == null || value.isEmpty) return;
     try {
       await widget.api.send('DELETE', '/account', {
-        'password': value,
+        'password': googleOnly ? '' : value,
+        'confirmation': googleOnly ? value : '',
         'stopAutoPay': true,
       });
       await widget.api.clearSession();
+      if (mounted) widget.onChange();
+    } catch (e) {
+      if (mounted) notify(context, '$e');
+    }
+  }
+
+  Future<void> googleLogin() async {
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      await widget.api.authenticateGoogle(widget.business);
+      if (mounted) widget.onChange();
+    } catch (e) {
+      if (mounted) setState(() => error = '$e');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> claimOwner() async {
+    final code = await ask(
+      context,
+      'Activate product-owner controls',
+      'Private owner setup code',
+      secret: true,
+    );
+    if (code == null || code.isEmpty) return;
+    try {
+      await widget.api.saveSession(
+        Map<String, dynamic>.from(
+          await widget.api.post('/admin/claim-owner', {'code': code}),
+        ),
+      );
       if (mounted) widget.onChange();
     } catch (e) {
       if (mounted) notify(context, '$e');
@@ -424,27 +477,48 @@ class _AccountState extends State<AccountPage> {
                   Text(user['email']),
                   Text(user['phone'] ?? ''),
                   Text(
-                    user['role'] == 'merchant'
+                    user['role'] == 'admin'
+                        ? 'Product owner'
+                        : user['role'] == 'merchant'
                         ? 'Shop owner'
-                        : 'Buyer / individual seller',
+                        : 'Marketplace member',
                   ),
                 ],
               ),
             ),
           ),
-          ListTile(
-            leading: const Icon(Icons.inventory_2_outlined),
-            title: const Text('My listings'),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => Scaffold(
-                  appBar: AppBar(title: const Text('My listings')),
-                  body: MyListings(api: widget.api, onAccount: widget.onChange),
+          if (widget.business && user['role'] == 'merchant')
+            ListTile(
+              leading: const Icon(Icons.inventory_2_outlined),
+              title: const Text('My listings'),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => Scaffold(
+                    appBar: AppBar(title: const Text('My listings')),
+                    body: MyListings(
+                      api: widget.api,
+                      onAccount: widget.onChange,
+                    ),
+                  ),
                 ),
               ),
             ),
+          if (widget.business && user['role'] != 'admin')
+            TextButton(
+              onPressed: claimOwner,
+              child: const Text('Product-owner setup'),
+            ),
+          OutlinedButton.icon(
+            onPressed: busy ? null : googleLogin,
+            icon: const Icon(Icons.account_circle_outlined),
+            label: Text(
+              user['googleLinked'] == true
+                  ? 'Verify with Google'
+                  : 'Link Google',
+            ),
           ),
+          if (error != null) Notice(error!),
           ListTile(
             leading: const Icon(Icons.block),
             title: const Text('Blocked accounts'),
@@ -484,9 +558,15 @@ class _AccountState extends State<AccountPage> {
                 Text(
                   widget.business
                       ? 'Use a shop-owner account to manage your business.'
-                      : 'Sign in to post listings and connect with sellers.',
+                      : 'Login to save your favorites and connect with sellers.',
                 ),
                 const SizedBox(height: 22),
+                OutlinedButton.icon(
+                  onPressed: busy ? null : googleLogin,
+                  icon: const Icon(Icons.account_circle_outlined),
+                  label: const Text('Continue with Google'),
+                ),
+                const SizedBox(height: 16),
                 if (register) ...[
                   field('Your name', name, min: 2, max: 100),
                   field(
@@ -541,8 +621,8 @@ class _AccountState extends State<AccountPage> {
                     busy
                         ? 'Please wait…'
                         : register
-                        ? 'Create account'
-                        : 'Sign in',
+                        ? 'Sign up'
+                        : 'Login',
                   ),
                 ),
                 TextButton(
@@ -553,7 +633,7 @@ class _AccountState extends State<AccountPage> {
                   child: Text(
                     register
                         ? 'Already have an account? Sign in'
-                        : 'New here? Register',
+                        : 'New here? Sign up',
                   ),
                 ),
               ],
@@ -574,18 +654,15 @@ class _AccountState extends State<AccountPage> {
             ),
           ),
         ListTile(
-          title: const Text('Contact Galletrix support'),
+          title: const Text('Contact All in One Today support'),
           onTap: () => launchUrl(
-            Uri.parse('https://galletrix.com/contact'),
+            Uri.parse('$platformUrl/support'),
             mode: LaunchMode.externalApplication,
           ),
         ),
         const Padding(
           padding: EdgeInsets.all(12),
-          child: Text(
-            'All in One Today by Galletrix · 1.0.0',
-            textAlign: TextAlign.center,
-          ),
+          child: Text('All in One Today · 1.1.0', textAlign: TextAlign.center),
         ),
       ],
     );
@@ -661,7 +738,7 @@ class _BrowseState extends State<BrowsePage> {
 
   Future<void> favorite(Json item) async {
     if (widget.api.user == null) {
-      notify(context, 'Sign in from Account to save listings.');
+      notify(context, 'Use Login to save listings.');
       return;
     }
     final id = item['id'] as String;
@@ -765,7 +842,7 @@ class _BrowseState extends State<BrowsePage> {
             Notice(error!, action: load)
           else if (shown.isEmpty)
             const Notice(
-              'No listings yet. Try another search or post the first listing in your area.',
+              'No listings yet. Try another search or check back for new shop listings.',
             )
           else
             ...shown.map((x) {
@@ -905,7 +982,7 @@ class _DetailsState extends State<ListingDetails> {
 
   Future<void> contact() async {
     if (widget.api.user == null) {
-      notify(context, 'Sign in from Account before contacting a seller.');
+      notify(context, 'Use Login before contacting a seller.');
       return;
     }
     await Navigator.push(
@@ -955,7 +1032,7 @@ class _DetailsState extends State<ListingDetails> {
       if (mounted) {
         notify(
           context,
-          'Seller blocked. Manage blocked accounts from Account.',
+          'Seller blocked. Manage blocked accounts from Profile.',
         );
       }
     } catch (e) {
@@ -1250,9 +1327,7 @@ class _MessagesState extends State<MessagesPage> {
   @override
   Widget build(BuildContext context) => widget.api.user == null
       ? const Center(
-          child: Notice(
-            'Sign in from Account to see your inquiries and messages.',
-          ),
+          child: Notice('Use Login to see your inquiries and messages.'),
         )
       : RefreshIndicator(
           onRefresh: load,
@@ -1739,7 +1814,7 @@ class ShopDashboard extends StatefulWidget {
 }
 
 class _ShopState extends State<ShopDashboard> {
-  Json? pricing, price, checkout;
+  Json? pricing, price, checkout, metrics;
   List<dynamic>? shops;
   String? error, message;
   bool busy = false;
@@ -1748,8 +1823,9 @@ class _ShopState extends State<ShopDashboard> {
       phone = TextEditingController(),
       location = TextEditingController(),
       description = TextEditingController(),
-      branches = TextEditingController(text: '1');
-  String category = 'Vehicles';
+      branches = TextEditingController(text: '1'),
+      photos = TextEditingController(text: '100');
+  String category = categories.isEmpty ? '' : categories.first, size = 'small';
   Razorpay? razorpay;
   int quoteVersion = 0;
   bool get ios => Platform.isIOS;
@@ -1778,7 +1854,7 @@ class _ShopState extends State<ShopDashboard> {
   @override
   void dispose() {
     razorpay?.clear();
-    for (final c in [name, phone, location, description, branches]) {
+    for (final c in [name, phone, location, description, branches, photos]) {
       c.dispose();
     }
     super.dispose();
@@ -1790,10 +1866,14 @@ class _ShopState extends State<ShopDashboard> {
       final s = widget.api.user == null
           ? []
           : await widget.api.get('/shops/mine');
+      final m = widget.api.user == null
+          ? null
+          : await widget.api.get('/seller/metrics');
       if (mounted) {
         setState(() {
           pricing = Map<String, dynamic>.from(p);
           shops = s;
+          metrics = m == null ? null : Map<String, dynamic>.from(m);
         });
       }
       await quotePrice();
@@ -1804,7 +1884,7 @@ class _ShopState extends State<ShopDashboard> {
 
   Future<void> quotePrice() async {
     final version = ++quoteVersion;
-    if (pricing?['approved'] != true) return;
+    if (widget.api.user?['role'] != 'merchant' || category.isEmpty) return;
     final count = int.tryParse(branches.text);
     if (count == null || count < 1 || count > 100) {
       setState(() => price = null);
@@ -1814,6 +1894,8 @@ class _ShopState extends State<ShopDashboard> {
       final p = await widget.api.post('/billing/quote', {
         'category': category,
         'branches': count,
+        'size': size,
+        'expected_photos': int.tryParse(photos.text) ?? 100,
       });
       if (mounted && version == quoteVersion) {
         setState(() => price = Map<String, dynamic>.from(p));
@@ -1834,8 +1916,24 @@ class _ShopState extends State<ShopDashboard> {
       error = null;
     });
     try {
+      final offer = await widget.api.get('/shops/${shop['id']}/quote');
+      if (offer['requiresReview'] == true) {
+        throw ApiError(offer['message'], 409);
+      }
+      if (!mounted) return;
+      if (!await confirm(
+        context,
+        'Set up monthly AutoPay?',
+        'Authorize ₹${offer['amountMinor'] / 100} every month for ${shop['name']} until canceled? Review the full mandate in Razorpay before approving.',
+      )) {
+        if (mounted) setState(() => busy = false);
+        return;
+      }
       checkout = Map<String, dynamic>.from(
-        await widget.api.post('/billing/checkout', {'shopId': shop['id']}),
+        await widget.api.post('/billing/checkout', {
+          'shopId': shop['id'],
+          'acceptedAmountMinor': offer['amountMinor'],
+        }),
       );
       razorpay!.open({
         'key': checkout!['key'],
@@ -1886,9 +1984,21 @@ class _ShopState extends State<ShopDashboard> {
         'description': description.text.trim(),
         'category': category,
         'branches': int.parse(branches.text),
+        'size': size,
+        'expected_photos': int.parse(photos.text),
       });
       await load();
-      await pay(Map<String, dynamic>.from(s));
+      if (pricing?['checkoutEnabled'] == true &&
+          price?['requiresReview'] != true) {
+        await pay(Map<String, dynamic>.from(s));
+      } else if (mounted) {
+        setState(() {
+          busy = false;
+          message = price?['requiresReview'] == true
+              ? 'Shop saved for an owner-approved monthly quote. Refresh status to check the offer.'
+              : 'Shop saved. Payments will open after Razorpay configuration.';
+        });
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -1912,6 +2022,51 @@ class _ShopState extends State<ShopDashboard> {
         'requestId': subscription['id'],
       });
       if (mounted) setState(() => message = r['message']);
+      await load();
+    } catch (e) {
+      if (mounted) notify(context, '$e');
+    }
+  }
+
+  Future<void> viewQuote(Json shop) async {
+    try {
+      final q = await widget.api.get('/shops/${shop['id']}/quote');
+      if (mounted) {
+        notify(
+          context,
+          q['requiresReview'] == true
+              ? q['message']
+              : 'Approved subscription: ₹${q['amountMinor'] / 100}/month. ${q['reason'] ?? ''}',
+        );
+      }
+    } catch (e) {
+      if (mounted) notify(context, '$e');
+    }
+  }
+
+  Future<void> editShop(Json shop) async {
+    final n = await ask(
+      context,
+      'Edit shop',
+      'Shop name',
+      initial: shop['name'],
+    );
+    if (n == null || !mounted) return;
+    final d = await ask(
+      context,
+      'Edit shop',
+      'Description',
+      initial: shop['description'],
+    );
+    if (d == null) return;
+    try {
+      await widget.api.send('PATCH', '/shops/${shop['id']}', {
+        'name': n,
+        'description': d,
+        'location': shop['location'],
+        'phone': shop['phone'],
+        'image_path': shop['image_path'],
+      });
       await load();
     } catch (e) {
       if (mounted) notify(context, '$e');
@@ -1943,13 +2098,13 @@ class _ShopState extends State<ShopDashboard> {
           )
         else if (!enabled)
           const Notice(
-            'Shop subscriptions start from ₹499. Payments are not open yet while the category rates and billing schedule are finalized. No payment will be collected until the exact recurring price is shown.',
+            'Small single-branch shops start from ₹499/month. Payments are not open yet while Razorpay is being configured. Larger shops, extra branches and additional photo storage need an owner-approved quote.',
           ),
         if (user == null)
           Notice(
             'Create a shop-owner account to get started.',
             action: widget.onAccount,
-            actionText: 'Open Account',
+            actionText: 'Login',
           )
         else if (user['role'] != 'merchant')
           const Notice(
@@ -1958,6 +2113,41 @@ class _ShopState extends State<ShopDashboard> {
         else if (shops == null)
           const Center(child: CircularProgressIndicator())
         else ...[
+          if (metrics != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    Column(
+                      children: [
+                        Text(
+                          '${metrics!['active_listings']}',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Text('Active listings'),
+                      ],
+                    ),
+                    Column(
+                      children: [
+                        Text(
+                          '${metrics!['enquiries']}',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Text('Inquiries'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ...shops!.map((s) {
             final subscription = s['subscription'];
             final active =
@@ -1994,6 +2184,21 @@ class _ShopState extends State<ShopDashboard> {
                         'Paid through ${subscription['paid_until'].toString().split('T').first}',
                       ),
                     const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 12,
+                      children: [
+                        TextButton(
+                          onPressed: () =>
+                              editShop(Map<String, dynamic>.from(s)),
+                          child: const Text('Edit shop'),
+                        ),
+                        TextButton(
+                          onPressed: () =>
+                              viewQuote(Map<String, dynamic>.from(s)),
+                          child: const Text('View monthly quote'),
+                        ),
+                      ],
+                    ),
                     if (active)
                       FilledButton(
                         onPressed: () async {
@@ -2085,6 +2290,37 @@ class _ShopState extends State<ShopDashboard> {
                         onChanged: (_) => quotePrice(),
                       ),
                       const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        initialValue: size,
+                        decoration: const InputDecoration(
+                          labelText: 'Shop size',
+                        ),
+                        items: ['small', 'medium', 'large']
+                            .map(
+                              (v) => DropdownMenuItem(value: v, child: Text(v)),
+                            )
+                            .toList(),
+                        onChanged: (v) {
+                          setState(() => size = v!);
+                          quotePrice();
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: photos,
+                        decoration: const InputDecoration(
+                          labelText: 'Expected product photos',
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (v) {
+                          final n = int.tryParse(v ?? '');
+                          return n == null || n < 1 || n > 100000
+                              ? 'Choose 1 to 100,000 photos'
+                              : null;
+                        },
+                        onChanged: (_) => quotePrice(),
+                      ),
+                      const SizedBox(height: 16),
                       field('Location', location, min: 2, max: 180),
                       field(
                         'Shop phone',
@@ -2104,7 +2340,9 @@ class _ShopState extends State<ShopDashboard> {
                         Padding(
                           padding: const EdgeInsets.all(12),
                           child: Text(
-                            'Recurring subscription: ₹${price!['amountMinor'] / 100} / ${price!['period']}\nBase ₹${price!['baseAmountMinor'] / 100} + extra branches ₹${price!['additionalBranchAmountMinor'] / 100}. Review the exact amount and mandate in Razorpay before authorizing.',
+                            price!['requiresReview'] == true
+                                ? price!['message']
+                                : 'Recurring subscription: ₹${price!['amountMinor'] / 100} / month. Review the exact amount and mandate in Razorpay before authorizing.',
                             style: const TextStyle(
                               height: 1.7,
                               fontWeight: FontWeight.w600,
@@ -2117,11 +2355,15 @@ class _ShopState extends State<ShopDashboard> {
                       ),
                       const SizedBox(height: 20),
                       FilledButton(
-                        onPressed: busy || !enabled || price == null
-                            ? null
-                            : register,
+                        onPressed: busy || price == null ? null : register,
                         child: Text(
-                          busy ? 'Please wait…' : 'Save shop & set up AutoPay',
+                          busy
+                              ? 'Please wait…'
+                              : price?['requiresReview'] == true
+                              ? 'Save shop & request a quote'
+                              : enabled
+                              ? 'Save shop & set up AutoPay'
+                              : 'Save shop details',
                         ),
                       ),
                     ],

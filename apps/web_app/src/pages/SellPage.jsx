@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAccount } from "../AccountContext";
-import { request, categories, createListing, uploadImage } from "../api/client";
+import { request, createListing, uploadImage } from "../api/client";
+import {useSite} from '../SiteContext';
 export default function SellPage() {
+  const {categories}=useSite();
   const { user, loading } = useAccount(),
     navigate = useNavigate(),
     [shops, setShops] = useState([]),

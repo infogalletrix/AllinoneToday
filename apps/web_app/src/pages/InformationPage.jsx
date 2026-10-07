@@ -1,22 +1,24 @@
 import { Link, useLocation } from "react-router-dom";
+import {useSite} from '../SiteContext';
 export default function InformationPage() {
   const { pathname } = useLocation();
+  const {site}=useSite();
   return (
     <section className="ait-page ait-prose">
       <div className="ait-panel">
-        {pathname === "/download" ? (
+        {pathname === '/support' ? <><h1>All in One Today support</h1><p>For account, shop registration, billing or safety help:</p>{site.supportEmail&&<p><a href={'mailto:'+site.supportEmail}>{site.supportEmail}</a></p>}{site.supportPhone&&<p>{site.supportPhone}</p>}{!site.supportEmail&&!site.supportPhone&&<p>Support contact details are being set up by the product owner.</p>}</> : pathname === "/download" ? (
           <>
             <p className="ait-eyebrow">ALL IN ONE TODAY APPS</p>
             <h1>Your next discovery is a tap away.</h1>
             <p>
-              Two Android apps. One connected marketplace. These first-release
+              Two Android apps. One connected marketplace. These release
               APKs support 64-bit ARM phones running Android 7.0 or newer.
             </p>
             <div className="ait-form-grid">
               <article className="ait-panel">
                 <h2>For everyone</h2>
                 <p>
-                  Browse listings, contact sellers and share your own finds.
+                  Browse listings, save discoveries and contact shops.
                 </p>
                 <a
                   className="btn-primary"
@@ -56,7 +58,7 @@ export default function InformationPage() {
           <>
             <h1>Privacy notice</h1>
             <p>
-              All in One Today is a marketplace operated by Galletrix. We store
+              All in One Today provides this marketplace. We store
               your account name, email, phone, password hash, listings, shop
               details, inquiries and replies to provide the service. Public
               listings and subscribed shop details are visible to visitors. Your
@@ -71,11 +73,11 @@ export default function InformationPage() {
               passwords.
             </p>
             <p>
-              You can remove listings and delete your account from the Account
+              You can remove listings and delete your account from the Profile
               screen after canceling any shop AutoPay. Financial records may be
               retained where required. Contact{" "}
-              <a className="ait-link" href="https://galletrix.com/contact">
-                Galletrix support
+              <a className="ait-link" href="/support">
+                All in One Today support
               </a>{" "}
               for privacy or deletion requests.
             </p>
@@ -106,14 +108,14 @@ export default function InformationPage() {
               number of branches, exact recurring amount and billing period will
               be displayed before Razorpay checkout. AutoPay renews until
               canceled; cancellation stops future renewals, with access
-              continuing through the paid period. Contact Galletrix about
+              continuing through the paid period. Contact All in One Today about
               billing disputes and refund requests; no automatic refund is
               promised.
             </p>
             <p>
               Never share an OTP or banking PIN. For help, contact{" "}
-              <a className="ait-link" href="https://galletrix.com/contact">
-                Galletrix support
+              <a className="ait-link" href="/support">
+                All in One Today support
               </a>
               .
             </p>
@@ -130,9 +132,9 @@ export default function InformationPage() {
             <p>
               Subscription status is not a guarantee of a shop’s identity or
               product quality. Use the listing’s report option for suspicious
-              content, and contact Galletrix for urgent concerns.
+              content, and contact All in One Today support for urgent concerns.
             </p>
-            <a className="btn-primary" href="https://galletrix.com/contact">
+            <a className="btn-primary" href="/support">
               Contact support
             </a>
           </>

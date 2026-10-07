@@ -47,5 +47,7 @@ void main() {
     expect(find.text('All in One Today'), findsOneWidget);
     expect(find.textContaining('No listings yet.'), findsOneWidget);
     expect(find.text('Alex Morgan'), findsNothing);
+    expect(find.text('Post listing'),findsNothing);
+    expect(find.text('Login'),findsOneWidget);
   });
 }

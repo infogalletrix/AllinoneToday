@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { fetchListings, categories } from "../api/client";
+import { fetchListings } from "../api/client";
+import {useSite} from '../SiteContext';
 import ListingCard from "../components/common/ListingCard";
 export default function ListingsPage({ favorites, onToggleFavorite }) {
+  const {categories}=useSite();
   const [params, setParams] = useSearchParams(),
     [items, setItems] = useState([]),
     [error, setError] = useState(""),
@@ -105,12 +107,8 @@ export default function ListingsPage({ favorites, onToggleFavorite }) {
         <div className="ait-empty">
           <h2>No listings here yet.</h2>
           <p>
-            Try another search, or be the first to share something worth
-            finding.
+            Try another search, or check back for new shop listings.
           </p>
-          <Link className="btn-primary" to="/sell">
-            Post a listing
-          </Link>
         </div>
       )}
     </section>

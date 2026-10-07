@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAccount } from "../AccountContext";
 import { post, request } from "../api/client";
+import GoogleLogin from '../components/common/GoogleLogin';
 export default function AccountPage() {
   const { user, setUser, logout, loading } = useAccount(),
     navigate = useNavigate(),
@@ -41,7 +42,7 @@ export default function AccountPage() {
       navigate(
         next?.startsWith("/") && !next.startsWith("//")
           ? next
-          : result.user.role === "merchant"
+          : result.user.role === 'admin' ? '/admin' : result.user.role === "merchant"
             ? "/merchant"
             : "/listings",
       );
@@ -63,7 +64,8 @@ export default function AccountPage() {
       await request("/account", {
         method: "DELETE",
         body: JSON.stringify({
-          password:
+          confirmation: user.passwordSet === false ? window.prompt('Log in again with Google first, then type DELETE to confirm.') || '' : '',
+          password: user.passwordSet === false ? '' :
             window.prompt("Enter your password to confirm account deletion") ||
             "",
           stopAutoPay: true,
@@ -99,21 +101,21 @@ export default function AccountPage() {
               {user.name} · {user.email}
             </p>
             <div className="ait-actions">
-              <Link
+              {user.role !== 'buyer' && <Link
                 className="btn-primary"
-                to={user.role === "merchant" ? "/merchant" : "/sell"}
+                to={user.role === "merchant" ? "/merchant" : "/admin"}
               >
                 {user.role === "merchant"
                   ? "Manage your shop"
-                  : "Post a listing"}
-              </Link>
+                  : "Owner dashboard"}
+              </Link>}
               <Link className="btn-secondary" to="/messages">
                 Messages
               </Link>
-              <Link className="btn-secondary" to="/my-listings">
+              {user.role !== 'buyer' && <Link className="btn-secondary" to="/my-listings">
                 My listings
-              </Link>
-              {user.role === 'admin' && <Link className="btn-secondary" to="/admin">Review reports</Link>}
+              </Link>}
+              {user.role === 'admin' && <Link className="btn-secondary" to="/admin">Product-owner dashboard</Link>}
               <button className="btn-secondary" onClick={logout}>
                 Sign out
               </button>
@@ -121,9 +123,11 @@ export default function AccountPage() {
                 Delete account
               </button>
             </div>
+            <GoogleLogin linked={user.googleLinked} role={user.role === 'merchant' ? 'merchant' : 'buyer'} onSuccess={result=>setUser(result.user)}/>
           </>
         ) : (
           <form onSubmit={submit} className="ait-form">
+            <GoogleLogin role={values.role} onSuccess={result=>{setUser(result.user);navigate(result.user.role==='admin'?'/admin':result.user.role==='merchant'?'/merchant':'/listings');}}/>
             {register && (
               <>
                 <label>
@@ -145,13 +149,13 @@ export default function AccountPage() {
                     {...field("phone")}
                   />
                 </label>
-                <label>
+                {params.get('role')==='merchant' && <label>
                   I am a
                   <select {...field("role")}>
                     <option value="buyer">Buyer / individual seller</option>
                     <option value="merchant">Shop owner</option>
                   </select>
-                </label>
+                </label>}
               </>
             )}
             <label>
@@ -199,7 +203,7 @@ export default function AccountPage() {
               </>
             )}
             <button className="btn-primary" disabled={busy}>
-              {busy ? "Please wait…" : register ? "Create account" : "Sign in"}
+              {busy ? "Please wait…" : register ? "Sign up" : "Login"}
             </button>
             <button
               type="button"
@@ -211,7 +215,7 @@ export default function AccountPage() {
             >
               {register
                 ? "Already registered? Sign in"
-                : "New here? Create an account"}
+                : "New here? Sign up"}
             </button>
           </form>
         )}

@@ -2,10 +2,12 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight } from 'lucide-react';
 import './CategoryGrid.css';
+import {useSite} from '../../SiteContext';
 
-export default function CategoryGrid() {
+export default function CategoryGrid({section}) {
+  const {site}=useSite();
   // Matching exact 8 cards from the Figma presentation screenshot (node-id=99-109)
-  const categories = [
+  const originalCategories = [
     {
       id: 'cat_vehicles',
       imagePath: '/images/h1.png',
@@ -63,14 +65,15 @@ export default function CategoryGrid() {
       route: '/listings?category=Furniture',
     },
   ];
+  const categories=site.categories.map(category=>({id:category.id,title:category.name,subtitle:category.subtitle,imagePath:category.image_path||'/images/h.png',route:'/listings?category='+encodeURIComponent(category.name)}));
 
   return (
     <section className="figma-categories-section">
       <div className="container figma-cat-container">
         {/* Section Header matching Figma slide node-id=99-109 */}
         <div className="figma-cat-header">
-          <h2 className="figma-cat-headline">Browse by category</h2>
-          <p className="figma-cat-subtitle">Curated collections across every need</p>
+          <h2 className="figma-cat-headline">{section?.title}</h2>
+          <p className="figma-cat-subtitle">{section?.body}</p>
         </div>
 
         {/* 4x2 Grid of Photo Cards matching Figma Screenshot */}

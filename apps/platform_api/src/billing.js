@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { matchesSignature } from './security.js';
 import { readPricing, quote } from './pricing.js';
+import { shopQuote } from './assessments.js';
 
 export const billingEnabled = () => Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET && process.env.RAZORPAY_WEBHOOK_SECRET && readPricing().approved);
 async function provider(path, body) {
@@ -13,8 +14,8 @@ async function provider(path, body) {
   if (!response.ok) throw new Error('The payment provider could not complete this request.');
   return value;
 }
-export async function createCheckout(pool, account, shopId) {
-  if (!billingEnabled()) throw Object.assign(new Error('Shop subscriptions are not open yet. Please contact Galletrix.'), { status: 503 });
+export async function createCheckout(pool, account, shopId, acceptedAmountMinor) {
+  if (!billingEnabled()) throw Object.assign(new Error('Shop subscriptions are not open yet. Please contact All in One Today support.'), { status: 503 });
   const client = await pool.connect();
   let sent = false;
   let requestId;
@@ -25,11 +26,14 @@ export async function createCheckout(pool, account, shopId) {
     if (!shop) throw Object.assign(new Error('Shop not found.'), { status: 404 });
     const previous = (await client.query("SELECT * FROM subscriptions WHERE shop_id=$1 AND status NOT IN ('cancelled','completed','expired','failed') ORDER BY created_at DESC LIMIT 1", [shopId])).rows[0];
     if (previous) {
+      if(previous.amount_minor !== acceptedAmountMinor) throw Object.assign(new Error('The subscription amount changed. Refresh and review it before continuing.'),{status:409});
       if (!previous.provider_id) throw Object.assign(new Error('Checkout creation is awaiting confirmation. Contact support before retrying.'), { status: 409 });
       await client.query('COMMIT');
       return checkoutResult(previous, shop, account);
     }
-    const price = quote(readPricing(), shop.category, shop.branches);
+    const price = await shopQuote(client, shop);
+    if(price.requiresReview) throw Object.assign(new Error(price.message),{status:409});
+    if(price.amountMinor !== acceptedAmountMinor) throw Object.assign(new Error('The subscription amount changed. Refresh and review it before continuing.'),{status:409});
     const priceKey = `${price.version}:${price.period}:${price.amountMinor}`;
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`plan:${priceKey}`]);
     let plan = (await client.query('SELECT provider_plan_id FROM billing_plans WHERE price_key=$1', [priceKey])).rows[0]?.provider_plan_id;

@@ -3,6 +3,10 @@ set -euo pipefail
 umask 022
 cd /opt/allinonetoday
 test -f incoming.tar.gz
+umask 077
+mkdir -p backups
+docker exec allinonetoday-db-1 pg_dump -U allinonetoday -d allinonetoday | gzip > "backups/before-release-$(date -u +%Y%m%dT%H%M%SZ).sql.gz"
+umask 022
 mkdir -p releases
 release="releases/$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "$release"
@@ -12,6 +16,9 @@ cp -a "$release/apps/platform_api" apps/
 cp -a "$release/apps/web_app/dist/." web/
 cp "$release/deployment/compose.yml" deployment/
 if [ ! -f deployment/pricing.json ]; then cp "$release/deployment/pricing.example.json" deployment/pricing.json; fi
+# This release uses the user-confirmed INR499/month small-shop policy. Larger
+# capacities require an individually approved quote, not guessed category fees.
+node --input-type=module -e 'import {readFileSync,writeFileSync} from "node:fs";const p=JSON.parse(readFileSync("deployment/pricing.json","utf8"));if(!p.approved){writeFileSync("deployment/pricing.json",readFileSync(process.argv[1]));}' "$release/deployment/pricing.example.json"
 if [ ! -f deployment/.env ]; then
     umask 077
     db_secret="$(openssl rand -hex 32)"

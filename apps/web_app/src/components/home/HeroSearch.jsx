@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, ArrowRight } from 'lucide-react';
 import './HeroSearch.css';
+import {useSite} from '../../SiteContext';
 
-export default function HeroSearch() {
+export default function HeroSearch({section}) {
+  const {site}=useSite();
   const [keyword, setKeyword] = useState('');
   const [location, setLocation] = useState('');
   const navigate = useNavigate();
@@ -16,7 +18,7 @@ export default function HeroSearch() {
     navigate(`/listings?${params.toString()}`);
   };
 
-  const popularTags = [
+  const defaultTags = [
     { label: 'Cars', category: 'Vehicles' },
     { label: 'Property', category: 'Property' },
     { label: 'Jobs', category: 'Jobs' },
@@ -25,23 +27,23 @@ export default function HeroSearch() {
     { label: 'Services', category: 'Services' },
     { label: 'Furniture', category: 'Furniture' },
   ];
+  const popularTags=site.popular;
 
   return (
-    <section className="figma-hero-section">
+    <section className="figma-hero-section" style={section?.image?{backgroundImage:`url("${section.image}")`}:undefined}>
       <div className="figma-hero-overlay"></div>
 
       <div className="container figma-hero-inner">
         {/* Left-aligned Hero Content matching Figma Desktop - 71 */}
         <div className="figma-hero-left-box">
           {/* Headline */}
-          <h1 className="figma-hero-title">
-            Find What You Need. <br />
-            Discover What's Next.
+          <h1 className="figma-hero-title" style={{whiteSpace:'pre-line'}}>
+            {section?.title}
           </h1>
 
           {/* Subtitle */}
           <p className="figma-hero-description">
-            Explore products, properties, vehicles, jobs and services from people and shops around you.
+            {section?.body}
           </p>
 
           {/* Translucent Search Pill Bar matching Figma Desktop - 71 */}
@@ -86,7 +88,7 @@ export default function HeroSearch() {
                   key={tag.label}
                   type="button"
                   className="popular-pill-tag"
-                  onClick={() => navigate(`/listings?category=${tag.category}`)}
+                  onClick={() => navigate(`/listings?category=${encodeURIComponent(tag.category)}`)}
                 >
                   {tag.label}
                 </button>

@@ -1,8 +1,8 @@
 {
-  "approved": false,
-  "version": "pending-owner-approval",
+  "approved": true,
+  "version": "small-shop-monthly-v1",
   "startingAmountMinor": 49900,
   "currency": "INR",
-  "period": null,
+  "period": "month",
   "categories": []
 }

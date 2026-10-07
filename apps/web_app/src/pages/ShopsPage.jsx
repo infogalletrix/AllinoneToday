@@ -18,9 +18,6 @@ export default function ShopsPage() {
       <p className="ait-lead">
         Explore businesses with active shop registrations on All in One Today.
       </p>
-      <Link className="btn-primary" to="/merchant">
-        Register your shop
-      </Link>
       {error ? (
         <p className="ait-error">{error}</p>
       ) : loading ? (
