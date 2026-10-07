@@ -12,6 +12,15 @@ class TestApi extends MarketplaceApi {
   Future<dynamic> get(String path) async => [];
 }
 
+class CategoryApi extends TestApi {
+  @override
+  Future<dynamic> get(String path) async => path == '/categories'
+      ? [
+          {'name': 'Textiles'},
+        ]
+      : [];
+}
+
 void main() {
   test('Password policy requires every character class', () {
     expect(strongPassword('LongPassword1!'), true);
@@ -47,7 +56,35 @@ void main() {
     expect(find.text('All in One Today'), findsOneWidget);
     expect(find.textContaining('No listings yet.'), findsOneWidget);
     expect(find.text('Alex Morgan'), findsNothing);
-    expect(find.text('Post listing'),findsNothing);
-    expect(find.text('Login'),findsOneWidget);
+    expect(find.text('Post listing'), findsNothing);
+    expect(find.text('Login'), findsOneWidget);
   });
+  testWidgets(
+    'Public login contains signup and Google, not publishing controls',
+    (tester) async {
+      await tester.pumpWidget(MarketplaceApp(api: TestApi()));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Login'));
+      await tester.pumpAndSettle();
+      expect(find.text('Continue with Google'), findsOneWidget);
+      expect(find.text('New here? Sign up'), findsOneWidget);
+      expect(find.text('Post listing'), findsNothing);
+    },
+  );
+  testWidgets(
+    'Refreshing loads owner-managed categories without an APK update',
+    (tester) async {
+      final saved = categories;
+      try {
+        await tester.pumpWidget(MarketplaceApp(api: CategoryApi()));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Refresh'));
+        await tester.pumpAndSettle();
+        expect(find.text('Textiles'), findsOneWidget);
+        expect(categories, ['Textiles']);
+      } finally {
+        categories = saved;
+      }
+    },
+  );
 }

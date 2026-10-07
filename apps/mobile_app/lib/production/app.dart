@@ -89,7 +89,13 @@ class _ShellState extends State<MarketplaceShell> {
     }
   }
 
-  void refresh() {
+  void refresh() async {
+    try {
+      final remote = await widget.api.get('/categories') as List;
+      categories = remote.map((item) => item['name'] as String).toList();
+    } catch (e) {
+      if (mounted) notify(context, 'Categories could not refresh: $e');
+    }
     if (mounted) setState(() => revision++);
   }
 
@@ -1623,7 +1629,7 @@ class _PublishState extends State<PublishPage> {
       price = TextEditingController(),
       location = TextEditingController(),
       description = TextEditingController();
-  String category = 'Vehicles';
+  String category = categories.isEmpty ? '' : categories.first;
   String? shopId;
   XFile? photo;
   List<dynamic> shops = [];
