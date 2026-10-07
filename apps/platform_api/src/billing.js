@@ -2,9 +2,11 @@ import { randomUUID } from 'node:crypto';
 import { matchesSignature } from './security.js';
 import { readPricing, quote } from './pricing.js';
 import { shopQuote } from './assessments.js';
+import { billingConfiguration, requireBillingConfiguration } from './billing-config.js';
 
-export const billingEnabled = () => Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET && process.env.RAZORPAY_WEBHOOK_SECRET && readPricing().approved);
+export const billingEnabled = () => billingConfiguration().valid && Boolean(readPricing().approved);
 async function provider(path, body) {
+  requireBillingConfiguration();
   const response = await fetch(`https://api.razorpay.com/v1/${path}`, {
     method: body === undefined ? 'GET' : 'POST',
     headers: { Authorization: `Basic ${Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString('base64')}`, 'Content-Type': 'application/json' },
@@ -57,9 +59,11 @@ export async function createCheckout(pool, account, shopId, acceptedAmountMinor)
   } finally { client.release(); }
 }
 function checkoutResult(subscription, shop, account) {
-  return { key: process.env.RAZORPAY_KEY_ID, subscriptionId: subscription.provider_id, requestId: subscription.id, amountMinor: subscription.amount_minor, currency: 'INR', period: subscription.period, status: subscription.status, name: 'All in One Today', description: `${shop.name} shop subscription`, prefill: { name: account.name, email: account.email, contact: account.phone }, checkoutUrl: `${process.env.PUBLIC_URL || 'https://allinonetoday.galletrix.com'}/merchant?checkout=${subscription.id}` };
+  const test = billingConfiguration().mode === 'test';
+  return { key: process.env.RAZORPAY_KEY_ID, subscriptionId: subscription.provider_id, requestId: subscription.id, amountMinor: subscription.amount_minor, currency: 'INR', period: subscription.period, status: subscription.status, paymentMode: test ? 'test' : 'live', name: test ? 'All in One Today TEST' : 'All in One Today', description: `${test ? 'TEST ONLY: ' : ''}${shop.name} shop subscription`, prefill: { name: account.name, email: account.email, contact: account.phone }, checkoutUrl: `${process.env.PUBLIC_URL || 'https://allinonetoday.galletrix.com'}/merchant?checkout=${subscription.id}` };
 }
 export async function verifyCheckout(pool, account, input) {
+  requireBillingConfiguration();
   const subscription = (await pool.query('SELECT * FROM subscriptions WHERE id=$1 AND account_id=$2 AND provider_id=$3', [input.requestId, account.id, input.subscriptionId])).rows[0];
   if (!subscription || !matchesSignature(`${input.paymentId}|${subscription.provider_id}`, input.signature, process.env.RAZORPAY_KEY_SECRET)) throw Object.assign(new Error('Payment signature verification failed.'), { status: 400 });
   const [remote, payment] = await Promise.all([provider(`subscriptions/${subscription.provider_id}`), provider(`payments/${input.paymentId}`)]);
@@ -79,6 +83,7 @@ export async function verifyCheckout(pool, account, input) {
   return { verified: true, message: 'Your shop subscription is active.' };
 }
 export async function handleWebhook(pool, raw, signature, eventId) {
+  requireBillingConfiguration();
   if (!matchesSignature(raw, signature, process.env.RAZORPAY_WEBHOOK_SECRET)) throw Object.assign(new Error('Invalid webhook signature.'), { status: 400 });
   const event = JSON.parse(raw.toString('utf8'));
   const remote = event.payload?.subscription?.entity;

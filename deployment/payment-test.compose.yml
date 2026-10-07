@@ -1,0 +1,47 @@
+# This project has separate credentials, network, database and uploads.
+# Never deploy Test keys against the public marketplace database.
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: allinonetoday_payment_test
+      POSTGRES_USER: allinonetoday_payment_test
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set private test database password}
+    volumes:
+      - payment_test_database:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U allinonetoday_payment_test -d allinonetoday_payment_test']
+      interval: 5s
+      retries: 12
+    mem_limit: 256m
+  api:
+    build: ../apps/platform_api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      BILLING_ENVIRONMENT: test
+      PUBLIC_URL: https://allinonetoday.galletrix.com/payment-test
+      DATABASE_URL: postgres://allinonetoday_payment_test:${DB_PASSWORD}@db:5432/allinonetoday_payment_test
+      UPLOAD_DIR: /app/uploads
+      PRICING_FILE: /app/pricing.json
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:?Set private Test Key ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:?Set private Test Key Secret}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:?Set private test webhook secret}
+    ports:
+      - 127.0.0.1:5090:8080
+    volumes:
+      - payment_test_uploads:/app/uploads
+      - ./pricing.json:/app/pricing.json:ro
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:8080/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    mem_limit: 256m
+volumes:
+  payment_test_database:
+  payment_test_uploads:

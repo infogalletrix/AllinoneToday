@@ -18,7 +18,8 @@ try{
   const merchantPhoto=new FormData();merchantPhoto.append('image',new Blob([png],{type:'image/png'}),'shop-check.png');
   const ownPhoto=await call('POST','/uploads',merchantPhoto,merchant.token,201);
   await call('POST','/listings',{title:'Unpaid shop listing',price:100,category:'Services',location:'Verification location',description:'Must not be published without subscription.',image_path:ownPhoto.url,shop_id:shop.id},merchant.token,403);
-  await call('POST','/billing/verify',{requestId:shop.id,paymentId:'pay_fake',subscriptionId:'sub_fake',signature:'0'.repeat(64)},merchant.token,400);
+  const health=await call('GET','/health');
+  await call('POST','/billing/verify',{requestId:shop.id,paymentId:'pay_fake',subscriptionId:'sub_fake',signature:'0'.repeat(64)},merchant.token,health.billingEnabled?400:503);
   await call('POST','/conversations',{shop_id:shop.id,phone:'9999999999',message:'Unpaid shops must not be contactable.'},buyer.token,404);
   await call('GET',`/shops/${shop.id}/quote`,undefined,buyer.token,404);
   await call('POST','/blocks',{accountId:seller.user.id},buyer.token);

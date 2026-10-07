@@ -1,5 +1,6 @@
 import java.util.Properties
 import java.io.FileInputStream
+import java.util.Base64
 
 plugins {
     id("com.android.application")
@@ -11,6 +12,9 @@ val signingProperties = Properties().apply {
     val signingFile = rootProject.file("key.properties")
     if (signingFile.exists()) load(FileInputStream(signingFile))
 }
+val paymentTestBuild = (project.findProperty("dart-defines") as? String)
+    ?.split(",")
+    ?.any { String(Base64.getDecoder().decode(it)) == "PAYMENT_TEST_BUILD=true" } == true
 
 android {
     namespace = "com.galletrix.allinonetoday_business"
@@ -24,7 +28,8 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.galletrix.allinonetoday.business"
+        applicationId = "com.galletrix.allinonetoday.business" + if (paymentTestBuild) ".paymenttest" else ""
+        manifestPlaceholders["appLabel"] = if (paymentTestBuild) "All in One Business TEST" else "All in One Business"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

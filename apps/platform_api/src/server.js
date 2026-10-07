@@ -15,7 +15,11 @@ import { seedContent, publicContent } from './content.js';
 import { adminRouter } from './admin.js';
 import { googleAccount, googleConfig } from './google.js';
 import { shopCapacity, needsAssessment, basicQuote, shopQuote } from './assessments.js';
+import { billingConfiguration } from './billing-config.js';
 
+const publicAddress = new URL(process.env.PUBLIC_URL || 'http://localhost:5173');
+const publicBasePath = publicAddress.pathname.replace(/\/$/, '');
+const sessionPath = publicBasePath || '/';
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 10 });
 pg.types.setTypeParser(1700,Number);
 const app = express();
@@ -30,7 +34,7 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json', limit: 
 app.use(express.json({ limit: '256kb' }));
 app.use(express.urlencoded({extended:false,limit:'4kb'}));
 app.use('/api',(req,res,next)=>{
-  if(!['GET','HEAD'].includes(req.method) && req.get('origin') && req.get('origin')!==(process.env.PUBLIC_URL || 'http://localhost:5173')) throw fail(403,'Request origin is not allowed.');
+  if(!['GET','HEAD'].includes(req.method) && req.get('origin') && req.get('origin')!==publicAddress.origin) throw fail(403,'Request origin is not allowed.');
   next();
 });
 app.use('/uploads', express.static(process.env.UPLOAD_DIR || './uploads', { dotfiles: 'deny', immutable: true, maxAge: '7d' }));
@@ -52,18 +56,18 @@ async function auth(req,res,next) {
   if (!req.account) throw fail(401, 'Sign in to continue.');
   // Native bearer tokens are not subject to browser CSRF; cookie writes require our origin.
   if (!req.get('authorization') && !['GET','HEAD'].includes(req.method)) {
-    if (req.get('origin') !== (process.env.PUBLIC_URL || 'http://localhost:5173')) throw fail(403,'Request origin is not allowed.');
+    if (req.get('origin') !== publicAddress.origin) throw fail(403,'Request origin is not allowed.');
   }
   next();
 }
 async function issueSession(res, account, method='password') {
   const token = newToken();
   await pool.query("INSERT INTO sessions(token_hash,account_id,expires_at,auth_method) VALUES($1,$2,now()+interval '30 days',$3)",[tokenHash(token),account.id,method]);
-  res.cookie('ait_session', token, { httpOnly:true, secure:process.env.NODE_ENV==='production', sameSite:'lax', maxAge:30*86400000, path:'/' });
+  res.cookie('ait_session', token, { httpOnly:true, secure:process.env.NODE_ENV==='production', sameSite:'lax', maxAge:30*86400000, path:sessionPath });
   return { user: publicAccount(account), token };
 }
 const authLimit = rateLimit({ windowMs: 15*60000, limit: 15, standardHeaders:'draft-8', legacyHeaders:false });
-app.get('/api/health', async (req,res)=> { await pool.query('SELECT 1'); ok(res,{ status:'ready', service:'allinonetoday', billingEnabled:billingEnabled() }); });
+app.get('/api/health', async (req,res)=> { await pool.query('SELECT 1'); ok(res,{ status:'ready', service:'allinonetoday', billingEnabled:billingEnabled(), paymentEnvironment:billingConfiguration().environment, billingMode:billingConfiguration().mode }); });
 app.get('/api/site',async(req,res)=>ok(res,await publicContent(pool)));
 app.get('/api/auth/config',(req,res)=>ok(res,googleConfig()));
 app.post('/api/auth/google',authLimit,async(req,res)=>{
@@ -76,7 +80,7 @@ app.post('/api/auth/web-handoff',authLimit,async(req,res)=>{
     const grant=(await pool.query('DELETE FROM web_handoffs WHERE code_hash=$1 AND expires_at>now() RETURNING *',[tokenHash(z.string().min(40).max(100).parse(req.body.code))])).rows[0];
     if(!grant)throw fail(401,'This application login link has expired. Reopen the dashboard.');
     const account=(await pool.query('SELECT * FROM accounts WHERE id=$1 AND suspended=false',[grant.account_id])).rows[0];
-    if(!account)throw fail(401,'Account unavailable.');await issueSession(res,account,grant.auth_method);return res.redirect(303,account.role==='admin'?'/admin?embedded=1':'/merchant');
+    if(!account)throw fail(401,'Account unavailable.');await issueSession(res,account,grant.auth_method);return res.redirect(303,publicBasePath+(account.role==='admin'?'/admin?embedded=1':'/merchant'));
   }
   const account=await accountFor(req);if(!account||!['merchant','admin'].includes(account.role))throw fail(403,'A business account is required.');
   const code=newToken();await pool.query("INSERT INTO web_handoffs VALUES($1,$2,now()+interval '30 seconds',$3)",[tokenHash(code),account.id,account.auth_method]);ok(res,{code});
@@ -105,11 +109,11 @@ app.get('/api/auth/session',auth,(req,res)=>ok(res,publicAccount(req.account)));
 app.post('/api/auth/logout',auth,async(req,res)=> {
   const token=req.get('authorization')?.slice(7) || req.headers.cookie?.split(';').map(x=>x.trim()).find(x=>x.startsWith('ait_session='))?.slice(12);
   if(token) await pool.query('DELETE FROM sessions WHERE token_hash=$1',[tokenHash(token)]);
-  res.clearCookie('ait_session',{ path:'/' }); ok(res,null,'Signed out.');
+  res.clearCookie('ait_session',{ path:sessionPath }); ok(res,null,'Signed out.');
 });
 app.get('/api/categories',async(req,res)=>ok(res,(await pool.query('SELECT *,image_path AS image_url FROM marketplace_categories WHERE enabled=true ORDER BY position,name')).rows));
 async function checkCategory(name){if(!(await pool.query('SELECT 1 FROM marketplace_categories WHERE name=$1 AND enabled=true',[name])).rowCount)throw fail(400,'Choose an available category.');}
-app.get('/api/billing/pricing',(req,res)=> { const pricing=readPricing(); ok(res,{ ...pricing, checkoutEnabled:billingEnabled() }); });
+app.get('/api/billing/pricing',(req,res)=> { const pricing=readPricing(); ok(res,{ ...pricing, checkoutEnabled:billingEnabled(), paymentMode:billingConfiguration().mode }); });
 app.post('/api/billing/quote',async(req,res)=> { const input=z.object({ category:text(2,50), branches:z.number().int().min(1).max(100),...shopCapacity.shape }).parse(req.body);await checkCategory(input.category);ok(res,needsAssessment(input)?{requiresReview:true,period:'month',currency:'INR',message:'Save your shop for an owner-approved quote based on size, branches and photo storage.'}:basicQuote(input)); });
 const shopSchema=z.object({ name:text(2,120), category:text(2,50), branches:z.number().int().min(1).max(100), location:text(2,180), phone:text(7,30), description:z.string().trim().max(2000).default(''), image_path:z.string().max(500).default(''),...shopCapacity.shape });
 app.post('/api/shops',auth,async(req,res)=> {
@@ -229,7 +233,7 @@ app.delete('/api/account',auth,async(req,res)=>{
   }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
   for(const image of images){if(/^\/uploads\/[a-f0-9-]+\.(jpg|png|webp)$/.test(image.path))await unlink(resolve(process.env.UPLOAD_DIR || './uploads',basename(image.path))).catch(()=>{});}
   await pool.query('DELETE FROM uploads WHERE account_id=$1',[req.account.id]);
-  res.clearCookie('ait_session',{path:'/'});ok(res,null,'Your personal account data has been removed. Required financial records may be retained.');
+  res.clearCookie('ait_session',{path:sessionPath});ok(res,null,'Your personal account data has been removed. Required financial records may be retained.');
 });
 app.get('/api/products',(req,res)=>ok(res,[]));
 app.all(['/api/cart','/api/orders'],(req,res)=>res.status(501).json({success:false,message:'All in One Today connects buyers and sellers. Purchases are arranged directly with the seller.'}));

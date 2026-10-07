@@ -1,0 +1,21 @@
+// Test credentials are never passed in command arguments or printed.
+import {readFile,writeFile} from 'node:fs/promises';
+import {randomBytes} from 'node:crypto';
+import {spawn} from 'node:child_process';
+import {resolve} from 'node:path';
+const root=resolve(import.meta.dirname,'..');
+const path=resolve(root,'.local/marketplace-test-credentials.json');
+const values=JSON.parse(await readFile(path,'utf8'));
+if(!/^rzp_test_[A-Za-z0-9]+$/.test(values.RAZORPAY_KEY_ID||'') || !/^[A-Za-z0-9]{16,100}$/.test(values.RAZORPAY_KEY_SECRET||''))throw Error('Valid Test Mode API credentials are required.');
+if(!values.RAZORPAY_WEBHOOK_SECRET || values.RAZORPAY_WEBHOOK_SECRET.length<32)values.RAZORPAY_WEBHOOK_SECRET=randomBytes(32).toString('hex');
+if(!/^[A-Za-z0-9_-]{32,128}$/.test(values.RAZORPAY_WEBHOOK_SECRET))throw Error('Use a random URL-safe test webhook secret.');
+values.webhookUrl='https://allinonetoday.galletrix.com/payment-test/api/billing/webhook';
+await writeFile(path,JSON.stringify(values,null,2)+'\n',{mode:0o600});
+const data=Object.fromEntries(['RAZORPAY_KEY_ID','RAZORPAY_KEY_SECRET','RAZORPAY_WEBHOOK_SECRET'].map(name=>[name,values[name]]));
+const remote=`node --input-type=module -e 'import{mkdirSync,readFileSync,writeFileSync,existsSync,copyFileSync,chmodSync}from"node:fs";import{randomBytes}from"node:crypto";let input="";for await(const chunk of process.stdin)input+=chunk;const data=JSON.parse(input);const allowed=new Set(["RAZORPAY_KEY_ID","RAZORPAY_KEY_SECRET","RAZORPAY_WEBHOOK_SECRET"]);if(!/^rzp_test_[A-Za-z0-9]+$/.test(data.RAZORPAY_KEY_ID)||data.RAZORPAY_WEBHOOK_SECRET.length<32)throw Error("Test configuration rejected");const directory="/opt/allinonetoday/payment-test/deployment";mkdirSync(directory,{recursive:true,mode:448});const path=directory+"/.env";let lines=existsSync(path)?readFileSync(path,"utf8").split("\\n"):[];if(existsSync(path)){const backup=path+".backup-"+Date.now();copyFileSync(path,backup);chmodSync(backup,384);}if(!lines.some(line=>line.startsWith("DB_PASSWORD=")))lines.push("DB_PASSWORD="+randomBytes(32).toString("hex"));for(const[name,value]of Object.entries(data)){if(!allowed.has(name)||typeof value!=="string"||!/^[A-Za-z0-9_-]+$/.test(value))throw Error("Invalid private test field");lines=lines.filter(line=>!line.startsWith(name+"="));lines.push(name+"="+JSON.stringify(value));}writeFileSync(path,lines.join("\\n")+"\\n",{mode:384});chmodSync(path,384);console.log("Private test configuration saved. Production credentials were not changed.");'`;
+const transport=resolve(root,'../Galletrix ERP/tools/vps-release.mjs');
+const child=spawn(process.execPath,[transport,'runstdin',remote],{cwd:root,stdio:['pipe','pipe','pipe']});
+let output='';child.stdout.on('data',chunk=>output+=chunk);child.stderr.on('data',()=>{});child.stdin.end(JSON.stringify(data));
+const code=await new Promise(done=>child.on('close',done));
+if(code!==0)throw Error('Test configuration transport failed; values hidden.');
+console.log(output.trim());console.log('The replacement test webhook secret and URL are in .local/marketplace-test-credentials.json.');

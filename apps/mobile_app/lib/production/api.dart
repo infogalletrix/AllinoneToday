@@ -10,6 +10,7 @@ const platformUrl = String.fromEnvironment(
   'PLATFORM_URL',
   defaultValue: 'https://allinonetoday.galletrix.com',
 );
+const paymentTestBuild = bool.fromEnvironment('PAYMENT_TEST_BUILD');
 List<String> categories = [
   'Vehicles',
   'Property',

@@ -25,6 +25,7 @@ services:
       DATABASE_URL: postgres://allinonetoday:${DB_PASSWORD}@db:5432/allinonetoday
       UPLOAD_DIR: /app/uploads
       PRICING_FILE: /app/pricing.json
+      BILLING_ENVIRONMENT: live
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
       RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}

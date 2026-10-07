@@ -11,7 +11,8 @@ for(const name of allowed){const value=values[name];if(value){if(typeof value!==
 if(configuration.OWNER_EMAIL!=='kgaravind1998@gmail.com')throw new Error('The designated owner email must match the user-approved account.');
 const billing=allowed.slice(1,4).filter(name=>configuration[name]);
 if(billing.length && billing.length!==3)throw new Error('Fill all three Razorpay fields together before enabling payments.');
-if(configuration.RAZORPAY_KEY_ID&&!/^rzp_(test|live)_\w+$/.test(configuration.RAZORPAY_KEY_ID))throw new Error('Invalid Razorpay Key ID.');
+if(configuration.RAZORPAY_KEY_ID&&!/^rzp_live_[A-Za-z0-9]+$/.test(configuration.RAZORPAY_KEY_ID))throw new Error('Only Live keys may configure the public marketplace. Use the separate payment-test environment for Test keys.');
+if(configuration.RAZORPAY_WEBHOOK_SECRET && configuration.RAZORPAY_WEBHOOK_SECRET.length<32)throw new Error('Use a randomly generated webhook secret of at least 32 characters.');
 const ownerFile=resolve(root,'.local/owner-setup.json');
 let owner;
 try{await access(ownerFile);owner=JSON.parse(await readFile(ownerFile,'utf8'));}catch{owner={email:configuration.OWNER_EMAIL,setupCode:randomBytes(32).toString('base64url'),url:'https://allinonetoday.galletrix.com/admin'};await writeFile(ownerFile,JSON.stringify(owner,null,2),{flag:'wx',mode:0o600});}

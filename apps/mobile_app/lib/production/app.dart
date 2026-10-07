@@ -9,6 +9,11 @@ import 'owner_controls.dart';
 
 const orange = Color(0xFFF95738), ink = Color(0xFF14171C);
 Future<void> runMarketplace({bool business = false}) async {
+  if (paymentTestBuild && !platformUrl.endsWith('/payment-test')) {
+    throw StateError(
+      'Payment test builds must use the isolated payment-test API.',
+    );
+  }
   WidgetsFlutterBinding.ensureInitialized();
   runApp(MarketplaceApp(business: business));
 }
@@ -20,6 +25,14 @@ class MarketplaceApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
+    builder: (context, child) => paymentTestBuild
+        ? Banner(
+            message: 'TEST MODE',
+            location: BannerLocation.topEnd,
+            color: Colors.red.shade800,
+            child: child!,
+          )
+        : child!,
     title: business ? 'All in One Business' : 'All in One Today',
     theme: ThemeData(
       useMaterial3: true,
@@ -1929,8 +1942,8 @@ class _ShopState extends State<ShopDashboard> {
       if (!mounted) return;
       if (!await confirm(
         context,
-        'Set up monthly AutoPay?',
-        'Authorize ₹${offer['amountMinor'] / 100} every month for ${shop['name']} until canceled? Review the full mandate in Razorpay before approving.',
+        paymentTestBuild ? 'Test monthly AutoPay?' : 'Set up monthly AutoPay?',
+        '${paymentTestBuild ? 'TEST MODE: no real money will be charged. ' : ''}Authorize ₹${offer['amountMinor'] / 100} every month for ${shop['name']} until canceled? Review the full mandate in Razorpay before approving.',
       )) {
         if (mounted) setState(() => busy = false);
         return;
@@ -1941,6 +1954,12 @@ class _ShopState extends State<ShopDashboard> {
           'acceptedAmountMinor': offer['amountMinor'],
         }),
       );
+      if (checkout!['paymentMode'] != (paymentTestBuild ? 'test' : 'live')) {
+        throw ApiError(
+          'Payment environment mismatch. Checkout was not opened.',
+          503,
+        );
+      }
       razorpay!.open({
         'key': checkout!['key'],
         'subscription_id': checkout!['subscriptionId'],
