@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import './Footer.css';
+import BrandLogo from './BrandLogo';
 import {useSite} from '../../SiteContext';
 
 export default function Footer() {
@@ -11,8 +12,8 @@ export default function Footer() {
         <div className="footer-grid-figma">
           {/* Column 1: Marketplace Brand & Tagline */}
           <div className="footer-col-brand">
-            <Link to="/" className="footer-brand-title">
-              All in One Today
+            <Link to="/" className="footer-brand-title" aria-label="All in One Today home">
+              <BrandLogo />
             </Link>
             <p className="footer-brand-desc">
               {site.tagline}
@@ -32,8 +33,12 @@ export default function Footer() {
             <h4 className="footer-col-head">Your marketplace</h4>
             <ul className="footer-links-list">
               <li><Link to="/login">Login</Link></li>
+              <li><Link to="/about">About us</Link></li>
+              <li><Link to="/pricing">Subscription pricing</Link></li>
+              <li><Link to="/contact">Contact us</Link></li>
+              <li><Link to="/listings?favorites=true">Wishlist</Link></li>
               <li><Link to="/messages">Messages</Link></li>
-              <li><Link to="/download">Download apps</Link></li>
+              <li><Link to="/download">Get Android apps</Link></li>
               <li><Link to="/support">Contact support</Link></li>
             </ul>
           </div>
@@ -44,6 +49,9 @@ export default function Footer() {
             <ul className="footer-links-list">
               <li><Link to="/terms">Terms</Link></li>
               <li><Link to="/privacy">Privacy</Link></li>
+              <li><Link to="/delete-account">Delete account</Link></li>
+              <li><Link to="/refunds">Cancellation &amp; refunds</Link></li>
+              <li><Link to="/delivery">Service delivery</Link></li>
               <li><Link to="/safety">Safety Tips</Link></li>
             </ul>
           </div>
@@ -51,7 +59,7 @@ export default function Footer() {
 
         <div className="footer-bottom-bar-clean">
           <p className="footer-copy-text">© 2026 All in One Today. All rights reserved.</p>
-          <a className="ait-powered" href="https://galletrix.com" target="_blank" rel="noopener noreferrer">Powered by Galletrix Innovations</a>
+          <Link className="ait-powered" to="/contact">Business contact &amp; support</Link>
         </div>
       </div>
     </footer>

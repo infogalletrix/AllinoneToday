@@ -1,0 +1,18 @@
+.review-information { max-width: 1040px; }
+.review-information > .ait-panel { overflow-wrap: anywhere; }
+.review-information h2 { margin-top: 30px; font-size: 1.35rem; }
+.review-secondary, .review-updated { color: #64748b; }
+.review-business-address { white-space: pre-line; }
+.review-price-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 28px 0; }
+.review-price-card { padding: 22px; border: 1px solid #e2e8f0; border-radius: 15px; background: #f8fafc; min-width: 0; }
+.review-price-card h2 { margin: 0; font-size: 1.05rem; }
+.review-price-card p { font-size: .9rem; }
+.review-price-card .review-price { margin: 18px 0 12px; }
+.review-price strong { color: #172130; font-size: clamp(1.55rem, 2.6vw, 2.1rem); }
+.review-price span { color: #64748b; white-space: nowrap; }
+.review-example { border-left: 3px solid var(--ait-primary, #F95738); padding: 12px 18px; background: #fff7f3; }
+.review-updated { border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 32px !important; font-size: .85rem; }
+@media (max-width: 700px) {
+  .review-price-grid { grid-template-columns: 1fr; }
+  .review-information > .ait-panel { padding: 24px 20px; }
+}

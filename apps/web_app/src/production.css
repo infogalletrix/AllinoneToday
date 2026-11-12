@@ -5,6 +5,12 @@
   min-height: 65vh;
 }
 body {background:var(--ait-background,#F6F8FA);color:var(--ait-ink,#14171C);}
+.ait-wishlist-feedback{position:fixed;right:20px;bottom:24px;z-index:1200;max-width:min(440px,calc(100vw - 32px));padding:16px 20px;border:1px solid #b9ddcf;border-radius:14px;background:#f1fcf6;color:#195b3b;box-shadow:0 12px 32px #14211c20;font-size:.9rem;line-height:1.6;display:flex;align-items:center;gap:16px;overflow-wrap:anywhere}
+.ait-wishlist-feedback.is-error{background:#fff2ee;color:#992f22;border-color:#f3bfb4}
+.ait-wishlist-feedback button{flex-shrink:0;font:inherit;font-weight:700;text-decoration:underline}
+.ait-card-chat{padding:0 22px 20px;display:flex;flex-direction:column;gap:6px}
+.ait-card-chat a{display:flex;align-items:center;gap:8px;color:#bd3923;font-weight:700;font-size:.9rem;width:fit-content}
+.ait-card-chat small{color:#64748b;font-size:.73rem}
 .navbar-root.navbar-scrolled,.footer-root-figma {background:var(--ait-ink,#14171C);}
 .btn-dark {background:var(--ait-ink,#14171C)!important;}
 .ait-owner {max-width:1420px;}
@@ -70,6 +76,9 @@ body:has(.ait-owner):not(:has(.navbar-root)) .ait-owner {padding-top:28px;}
 .ait-auth {
   max-width: 560px;
 }
+.ait-auth-business {margin-top:24px!important;border-top:1px solid #e2e8f0;padding-top:20px;}
+.ait-listing-fields {border:0;padding:0;margin:0;min-width:0;display:flex;flex-direction:column;gap:20px;}
+.ait-listing-edit-photo {width:160px;height:120px;object-fit:cover;border-radius:12px;}
 .ait-form {
   display: flex;
   flex-direction: column;

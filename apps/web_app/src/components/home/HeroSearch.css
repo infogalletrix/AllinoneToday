@@ -92,6 +92,8 @@
 
 .location-field {
   flex: 1.2;
+  min-width: 0;
+  align-items: flex-start;
 }
 
 .capsule-icon {
@@ -138,6 +140,8 @@
   flex-wrap: wrap;
   gap: 10px;
 }
+.hero-location-note { max-width:580px;margin:-10px 0 22px;font-size:.73rem;line-height:1.6;color:#ffffffc9; }
+.query-field { min-width:0; }
 
 .popular-label {
   font-family: 'Plus Jakarta Sans', sans-serif;

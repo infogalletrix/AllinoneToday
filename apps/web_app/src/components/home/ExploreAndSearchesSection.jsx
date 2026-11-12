@@ -2,8 +2,10 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, Edit2, Trash2 } from 'lucide-react';
 import './ExploreAndSearchesSection.css';
+import { useDialogs } from '../common/DialogProvider';
 
 export default function ExploreAndSearchesSection() {
+  const { alert } = useDialogs();
   const exploreItems = [
     {
       id: 'list_macbook_m3',
@@ -99,7 +101,7 @@ export default function ExploreAndSearchesSection() {
                       type="button" 
                       className="search-icon-btn bell-btn" 
                       title="Notifications active"
-                      onClick={() => alert(`Notifications toggled for ${s.query}`)}
+                      onClick={() => alert({ title: 'Saved search notifications', message: `Notifications toggled for ${s.query}`, confirmLabel: 'Done' })}
                     >
                       <Bell size={14} className="bell-icon-orange" />
                     </button>
@@ -107,7 +109,7 @@ export default function ExploreAndSearchesSection() {
                       type="button" 
                       className="search-icon-btn" 
                       title="Edit search criteria"
-                      onClick={() => alert(`Editing search ${s.query}`)}
+                      onClick={() => alert({ title: 'Edit saved search', message: `Editing search ${s.query}`, confirmLabel: 'Done' })}
                     >
                       <Edit2 size={13} />
                     </button>
@@ -115,7 +117,7 @@ export default function ExploreAndSearchesSection() {
                       type="button" 
                       className="search-icon-btn" 
                       title="Delete saved search"
-                      onClick={() => alert(`Deleted ${s.query}`)}
+                      onClick={() => alert({ title: 'Saved search deleted', message: `Deleted ${s.query}`, confirmLabel: 'Done' })}
                     >
                       <Trash2 size={14} />
                     </button>

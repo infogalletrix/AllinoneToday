@@ -1,0 +1,10 @@
+import {supportedCategorySql} from './offering.js';
+import {shopPublicationAccessSql,managedListingOwnerSql} from './catalogue-policy.js';
+
+// Shared by catalogue reads and change-revision triggers. Keep publication and
+// family approval distinct; an empty published shop is still public.
+export const categoryVisible=`c.enabled=true AND ${supportedCategorySql('c')}`;
+export const publicShopVisible=`s.status='active' AND s.moderated_hidden=false AND EXISTS(SELECT 1 FROM accounts a WHERE a.id=s.owner_id AND a.suspended=false) AND EXISTS(SELECT 1 FROM marketplace_categories c WHERE c.name=s.category AND ${categoryVisible}) AND ${shopPublicationAccessSql('s')}`;
+export const publicListingVisible=`l.status='active' AND l.kind IN ('product','service') AND EXISTS(SELECT 1 FROM accounts owner WHERE owner.id=l.seller_id AND owner.suspended=false) AND EXISTS(SELECT 1 FROM marketplace_categories c WHERE c.name=l.category AND ${categoryVisible}) AND ${managedListingOwnerSql('l')} AND (l.shop_id IS NULL OR EXISTS(SELECT 1 FROM shops s WHERE s.id=l.shop_id AND s.admin_managed=l.admin_managed AND s.status='active' AND s.moderated_hidden=false AND EXISTS(SELECT 1 FROM marketplace_categories c WHERE c.name=s.category AND ${categoryVisible}) AND ${shopPublicationAccessSql('s')}))`;
+export const familyShopVisible=`s.status='active' AND s.moderated_hidden=false AND EXISTS(SELECT 1 FROM accounts a WHERE a.id=s.owner_id AND a.suspended=false) AND EXISTS(SELECT 1 FROM marketplace_categories c WHERE c.name=s.category AND ${categoryVisible} AND c.family_safe=true) AND ${shopPublicationAccessSql('s')}`;
+export const familyListingVisible=`l.status='active' AND l.kind IN ('product','service') AND EXISTS(SELECT 1 FROM accounts a WHERE a.id=l.seller_id AND a.suspended=false) AND EXISTS(SELECT 1 FROM marketplace_categories c WHERE c.name=l.category AND ${categoryVisible} AND c.family_safe=true) AND ${managedListingOwnerSql('l')} AND (l.shop_id IS NULL OR EXISTS(SELECT 1 FROM shops s WHERE s.id=l.shop_id AND s.admin_managed=l.admin_managed AND s.family_safe=true AND ${familyShopVisible}))`;

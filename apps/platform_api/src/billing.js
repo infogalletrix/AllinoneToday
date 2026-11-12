@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { matchesSignature } from './security.js';
-import { readPricing, quote } from './pricing.js';
+import { readPricing } from './pricing.js';
 import { shopQuote } from './assessments.js';
 import { billingConfiguration, requireBillingConfiguration } from './billing-config.js';
+import { requireAvailableCategory } from './offering.js';
 
 export const billingEnabled = () => billingConfiguration().valid && Boolean(readPricing().approved);
 async function provider(path, body) {
@@ -17,6 +18,9 @@ async function provider(path, body) {
   return value;
 }
 export async function createCheckout(pool, account, shopId, acceptedAmountMinor) {
+  const managed=(await pool.query('SELECT admin_managed,status FROM shops WHERE id=$1 AND owner_id=$2',[shopId,account.id])).rows[0];
+  if(managed?.status==='deleted')throw Object.assign(new Error('Shop not found.'),{status:404});
+  if(managed?.admin_managed && account.role === 'admin')throw Object.assign(new Error('Administrator-managed shops do not require a subscription.'),{status:409});
   if (!billingEnabled()) throw Object.assign(new Error('Shop subscriptions are not open yet. Please contact All in One Today support.'), { status: 503 });
   const client = await pool.connect();
   let sent = false;
@@ -24,8 +28,9 @@ export async function createCheckout(pool, account, shopId, acceptedAmountMinor)
   try {
     await client.query('BEGIN');
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [shopId]);
-    const shop = (await client.query('SELECT * FROM shops WHERE id=$1 AND owner_id=$2', [shopId, account.id])).rows[0];
-    if (!shop) throw Object.assign(new Error('Shop not found.'), { status: 404 });
+    const shop = (await client.query('SELECT * FROM shops WHERE id=$1 AND owner_id=$2 FOR UPDATE', [shopId, account.id])).rows[0];
+    if (!shop || shop.status === 'deleted') throw Object.assign(new Error('Shop not found.'), { status: 404 });
+    await requireAvailableCategory(client,shop.category,409);
     const previous = (await client.query("SELECT * FROM subscriptions WHERE shop_id=$1 AND status NOT IN ('cancelled','completed','expired','failed') ORDER BY created_at DESC LIMIT 1", [shopId])).rows[0];
     if (previous) {
       if(previous.amount_minor !== acceptedAmountMinor) throw Object.assign(new Error('The subscription amount changed. Refresh and review it before continuing.'),{status:409});
@@ -60,24 +65,38 @@ export async function createCheckout(pool, account, shopId, acceptedAmountMinor)
 }
 function checkoutResult(subscription, shop, account) {
   const test = billingConfiguration().mode === 'test';
-  return { key: process.env.RAZORPAY_KEY_ID, subscriptionId: subscription.provider_id, requestId: subscription.id, amountMinor: subscription.amount_minor, currency: 'INR', period: subscription.period, status: subscription.status, paymentMode: test ? 'test' : 'live', name: test ? 'All in One Today TEST' : 'All in One Today', description: `${test ? 'TEST ONLY: ' : ''}${shop.name} shop subscription`, prefill: { name: account.name, email: account.email, contact: account.phone }, checkoutUrl: `${process.env.PUBLIC_URL || 'https://allinonetoday.galletrix.com'}/merchant?checkout=${subscription.id}` };
+  return { key: process.env.RAZORPAY_KEY_ID, subscriptionId: subscription.provider_id, requestId: subscription.id, amountMinor: subscription.amount_minor, currency: 'INR', period: subscription.period, status: subscription.status, paymentMode: test ? 'test' : 'live', name: test ? 'All in One Today TEST' : 'All in One Today', description: `${test ? 'TEST ONLY: ' : ''}${shop.name} shop subscription`, prefill: { name: account.name, email: account.email, contact: account.phone }, checkoutUrl: `${process.env.PUBLIC_URL || 'https://allinonetoday.com'}/merchant?checkout=${subscription.id}` };
+}
+const unixTimestamp = value => Number.isSafeInteger(value) && value > 0;
+const terminalSubscriptionStates = ['cancelled','completed','expired'];
+function capturedPayment(payment, amount) {
+  return Boolean(payment?.id) && payment.status === 'captured' && payment.currency === 'INR'
+    && Number.isSafeInteger(payment.amount) && Number.isSafeInteger(payment.amount_refunded ?? 0)
+    && payment.amount - (payment.amount_refunded ?? 0) >= amount;
 }
 export async function verifyCheckout(pool, account, input) {
   requireBillingConfiguration();
-  const subscription = (await pool.query('SELECT * FROM subscriptions WHERE id=$1 AND account_id=$2 AND provider_id=$3', [input.requestId, account.id, input.subscriptionId])).rows[0];
+  const subscription = (await pool.query("SELECT b.* FROM subscriptions b JOIN shops s ON s.id=b.shop_id WHERE b.id=$1 AND b.account_id=$2 AND b.provider_id=$3 AND s.status<>'deleted'", [input.requestId, account.id, input.subscriptionId])).rows[0];
   if (!subscription || !matchesSignature(`${input.paymentId}|${subscription.provider_id}`, input.signature, process.env.RAZORPAY_KEY_SECRET)) throw Object.assign(new Error('Payment signature verification failed.'), { status: 400 });
   const [remote, payment] = await Promise.all([provider(`subscriptions/${subscription.provider_id}`), provider(`payments/${input.paymentId}`)]);
-  const paid = payment.status === 'captured' && payment.currency === 'INR' && Number(payment.amount) >= subscription.amount_minor && payment.invoice_id;
+  let paid = payment.id === input.paymentId && capturedPayment(payment, subscription.amount_minor) && Boolean(payment.invoice_id);
+  let paidUntil;
   if (paid) {
     const invoice = await provider(`invoices/${payment.invoice_id}`);
     if (invoice.subscription_id !== subscription.provider_id) throw Object.assign(new Error('Payment does not belong to this shop subscription.'), { status: 400 });
+    // A historical payment only buys its own invoiced period, even if the
+    // subscription has since advanced to another billing cycle.
+    paid = invoice.payment_id === input.paymentId && invoice.status === 'paid' && invoice.currency === 'INR'
+      && Number.isSafeInteger(invoice.amount_paid) && invoice.amount_paid >= subscription.amount_minor
+      && unixTimestamp(invoice.billing_end) && unixTimestamp(remote.current_end);
+    if(paid)paidUntil=Math.min(invoice.billing_end,remote.current_end);
   }
-  if (!paid || !['active','authenticated'].includes(remote.status) || !remote.current_end) return { verified: false, message: 'Your payment is awaiting provider confirmation. Check status shortly; do not pay again.' };
+  if (!paid || !['active','authenticated'].includes(remote.status) || paidUntil*1000<=Date.now()) return { verified: false, message: 'Your payment is awaiting provider confirmation. Check status shortly; do not pay again.' };
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query("UPDATE subscriptions SET status=CASE WHEN status IN ('cancelled','completed') THEN status ELSE 'active' END,payment_id=$1,paid_until=GREATEST(paid_until,to_timestamp($2)) WHERE id=$3", [input.paymentId, remote.current_end, subscription.id]);
-    await client.query("UPDATE shops SET status='active' WHERE id=$1", [subscription.shop_id]);
+    await client.query("UPDATE subscriptions SET status=CASE WHEN status IN ('cancelled','completed','expired') THEN status ELSE 'active' END,payment_id=$1,paid_until=GREATEST(paid_until,to_timestamp($2)) WHERE id=$3", [input.paymentId, paidUntil, subscription.id]);
+    await client.query("UPDATE shops SET status='active' WHERE id=$1 AND status<>'deleted'", [subscription.shop_id]);
     await client.query('COMMIT');
   } catch(error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
   return { verified: true, message: 'Your shop subscription is active.' };
@@ -97,12 +116,21 @@ export async function handleWebhook(pool, raw, signature, eventId) {
     if (!recorded.rowCount) { await client.query('COMMIT'); return; }
     if (event.event === 'subscription.charged') {
       const payment = event.payload?.payment?.entity;
-      if (!payment || payment.status !== 'captured' || payment.currency !== 'INR' || payment.amount < subscription.amount_minor || !remote.current_end) throw new Error('Webhook payment amount/status mismatch.');
-      await client.query("UPDATE subscriptions SET status=CASE WHEN status IN ('cancelled','completed') THEN status ELSE 'active' END,payment_id=$1,paid_until=GREATEST(paid_until,to_timestamp($2)) WHERE id=$3", [payment.id, remote.current_end, subscription.id]);
-      if(Number(remote.current_end)*1000>Date.now())await client.query("UPDATE shops SET status='active' WHERE id=$1", [subscription.shop_id]);
+      if (!capturedPayment(payment,subscription.amount_minor) || !unixTimestamp(remote.current_end)) throw new Error('Webhook payment amount/status mismatch.');
+      await client.query("UPDATE subscriptions SET status=CASE WHEN status IN ('cancelled','completed','expired') THEN status ELSE 'active' END,payment_id=$1,paid_until=GREATEST(paid_until,to_timestamp($2)) WHERE id=$3", [payment.id, remote.current_end, subscription.id]);
+      if(Number(remote.current_end)*1000>Date.now())await client.query("UPDATE shops SET status='active' WHERE id=$1 AND status<>'deleted'", [subscription.shop_id]);
     } else if (['subscription.cancelled','subscription.completed','subscription.halted','subscription.expired'].includes(event.event)) {
-      await client.query('UPDATE subscriptions SET status=$1 WHERE id=$2', [remote.status, subscription.id]);
-      if (!subscription.paid_until || new Date(subscription.paid_until) <= new Date()) await client.query("UPDATE shops SET status='inactive' WHERE id=$1", [subscription.shop_id]);
+      // Delivery order is not guaranteed. Terminal mandates cannot restart, and a
+      // stale halted/expired snapshot must not replace a newer provider state.
+      let status = terminalSubscriptionStates.includes(subscription.status) ? null : remote.status;
+      if (status && ['halted','expired'].includes(status) && status !== subscription.status) {
+        const current = await provider(`subscriptions/${subscription.provider_id}`);
+        status = ['halted',...terminalSubscriptionStates].includes(current.status) ? current.status : null;
+      }
+      if (status) {
+        await client.query('UPDATE subscriptions SET status=$1 WHERE id=$2', [status, subscription.id]);
+        if (!subscription.paid_until || new Date(subscription.paid_until) <= new Date()) await client.query("UPDATE shops SET status='inactive' WHERE id=$1 AND status<>'deleted'", [subscription.shop_id]);
+      }
     }
     await client.query('COMMIT');
   } catch(error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
@@ -110,7 +138,25 @@ export async function handleWebhook(pool, raw, signature, eventId) {
 export async function cancelSubscription(pool, account, requestId, immediate=false) {
   const subscription = (await pool.query('SELECT * FROM subscriptions WHERE id=$1 AND account_id=$2', [requestId, account.id])).rows[0];
   if (!subscription?.provider_id) throw Object.assign(new Error('Subscription not found.'), { status: 404 });
-  const remote = await provider(`subscriptions/${subscription.provider_id}/cancel`, { cancel_at_cycle_end: !immediate && subscription.paid_until && new Date(subscription.paid_until)>new Date()?1:0 });
-  await pool.query('UPDATE subscriptions SET status=$1 WHERE id=$2', [remote.status, subscription.id]);
-  return { status:remote.status,message:immediate?'AutoPay canceled.':'AutoPay cancellation requested. Access continues through the paid subscription period.' };
+  const path = `subscriptions/${subscription.provider_id}`;
+  const cancelAtCycleEnd = Boolean(!immediate && subscription.paid_until && new Date(subscription.paid_until)>new Date());
+  let remote = await provider(path);
+  if (!terminalSubscriptionStates.includes(remote.status)) {
+    try {
+      remote = await provider(`${path}/cancel`, { cancel_at_cycle_end: cancelAtCycleEnd ? 1 : 0 });
+    } catch (error) {
+      // Another request or the dashboard may have cancelled the mandate, or the
+      // response may have been lost. Only a confirmed terminal state is success.
+      let current;
+      try { current = await provider(path); } catch { throw error; }
+      if (!terminalSubscriptionStates.includes(current.status)) throw error;
+      remote = current;
+    }
+  }
+  const saved = (await pool.query("UPDATE subscriptions SET status=CASE WHEN status IN ('cancelled','completed','expired') THEN status ELSE $1 END WHERE id=$2 RETURNING status", [remote.status, subscription.id])).rows[0];
+  const status = saved.status;
+  return { status, message:terminalSubscriptionStates.includes(status)
+    ? 'AutoPay is no longer active. Access continues through the paid subscription period.'
+    : cancelAtCycleEnd ? 'AutoPay cancellation requested for the end of the current billing cycle. Access continues through the paid subscription period.'
+      : 'AutoPay cancellation is awaiting confirmation. Access continues through the paid subscription period.' };
 }

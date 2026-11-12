@@ -1,13 +1,26 @@
 import { readFileSync } from 'node:fs';
-export const categories = ['Vehicles', 'Property', 'Jobs', 'Groceries', 'Electronics', 'Mobiles', 'Services', 'Furniture'];
+import { assertSupportedCategory, isSupportedCategory } from './offering.js';
+export const categories = ['Vehicles', 'Groceries', 'Electronics', 'Mobiles', 'Services', 'Furniture'];
 let savedPricing = null;
+export const monthlyPricing = { approved:true, version:'shop-size-monthly-v2',period:'month',startingAmountMinor:49900,currency:'INR',tiers:{small:49900,medium:99900,large:199900},additionalBranchAmountMinor:100000,categories:[] };
 export function setPricing(pricing) { savedPricing = pricing; }
 export function readPricing() {
-  if (savedPricing) return savedPricing;
-  if (!process.env.PRICING_FILE) return { approved:true, version:'small-shop-monthly-v1',period:'month',startingAmountMinor:49900,currency:'INR',categories:[] };
-  return JSON.parse(readFileSync(process.env.PRICING_FILE, 'utf8'));
+  if (savedPricing) return {...monthlyPricing,...savedPricing,period:'month'};
+  if (!process.env.PRICING_FILE) return {...monthlyPricing};
+  return {...monthlyPricing,...JSON.parse(readFileSync(process.env.PRICING_FILE, 'utf8')),period:'month'};
+}
+export function monthlyQuote(shop, pricing=readPricing()) {
+  assertSupportedCategory(shop.category);
+  const size=shop.size||'small',branches=shop.branches;
+  if(!['small','medium','large'].includes(size)||!Number.isInteger(branches)||branches<1||branches>100)throw Object.assign(new Error('Choose a shop size and 1 to 100 branches.'),{status:400});
+  const base=pricing.tiers?.[size],branchRate=pricing.additionalBranchAmountMinor;
+  if(!Number.isSafeInteger(base)||base<49900||!Number.isSafeInteger(branchRate)||branchRate<0)throw Object.assign(new Error('Monthly pricing is not configured correctly.'),{status:503});
+  const additional=(branches-1)*branchRate,total=base+additional;
+  if(!Number.isSafeInteger(total)||total>10000000)throw Object.assign(new Error('This shop needs a custom subscription quote.'),{status:400});
+  return {category:shop.category,size,branches,amountMinor:total,baseAmountMinor:base,additionalBranchAmountMinor:additional,branchRateMinor:branchRate,currency:'INR',period:'month',version:pricing.version,requiresReview:false};
 }
 export function quote(pricing, category, branches) {
+  assertSupportedCategory(category);
   if (!Number.isInteger(branches) || branches < 1 || branches > 100) throw Object.assign(new Error('Choose between 1 and 100 branches.'),{status:400});
   const rate = pricing.categories.find(item => item.category === category);
   if (!pricing.approved || !rate || !['month', 'year'].includes(pricing.period) || !pricing.version) throw Object.assign(new Error('Shop subscription pricing is awaiting confirmation.'),{status:503});
@@ -15,4 +28,10 @@ export function quote(pricing, category, branches) {
   const total = rate.baseAmountMinor + (branches - 1) * rate.additionalBranchAmountMinor;
   if (!Number.isSafeInteger(total) || total < 49900 || total > 10000000) throw Object.assign(new Error('This shop requires a custom subscription quote.'),{status:400});
   return { category, branches, amountMinor: total, baseAmountMinor: rate.baseAmountMinor, additionalBranchAmountMinor: (branches - 1) * rate.additionalBranchAmountMinor, currency: 'INR', period: pricing.period, version: pricing.version };
+}
+export async function publicPricing(pool) {
+  const categories=(await pool.query('SELECT id,name,slug,module,enabled FROM marketplace_categories')).rows;
+  const available=new Set(categories.filter(category=>category.enabled && isSupportedCategory(category)).map(category=>category.name));
+  const pricing=readPricing();
+  return {...pricing,categories:(pricing.categories||[]).filter(rate=>available.has(rate.category))};
 }

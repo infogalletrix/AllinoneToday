@@ -1,17 +1,45 @@
 import { z } from 'zod';
+import { monthlyQuote } from './pricing.js';
 export const shopCapacity = z.object({ size: z.enum(['small','medium','large']).default('small'), expected_photos: z.number().int().min(1).max(100000).default(100) });
-export const needsAssessment = shop => shop.size !== 'small' || shop.branches > 1 || shop.expected_photos > 100 || /textil|cloth|fashion|garment/i.test(shop.category);
+export const needsAssessment = () => false;
 export function basicQuote(shop) {
-  return { category:shop.category, branches:shop.branches, amountMinor:49900, currency:'INR', period:'month', version:'small-shop-monthly-v1', baseAmountMinor:49900, additionalBranchAmountMinor:0 };
+  return monthlyQuote(shop);
 }
 export async function shopQuote(pool, shop) {
   // Existing mandates retain the price the customer originally accepted.
   const existing = (await pool.query("SELECT quote FROM subscriptions WHERE shop_id=$1 AND status NOT IN ('cancelled','completed','expired','failed') ORDER BY created_at DESC LIMIT 1",[shop.id])).rows[0];
   if(existing) return existing.quote;
+  if(shop.subscription_amount_minor && shop.subscription_amount_minor > 0) {
+    return {
+      category: shop.category,
+      branches: shop.branches || 1,
+      amountMinor: shop.subscription_amount_minor,
+      currency: 'INR',
+      period: 'month',
+      version: `admin-fixed-${shop.id}`,
+      baseAmountMinor: shop.subscription_amount_minor,
+      additionalBranchAmountMinor: 0,
+      requiresReview: false
+    };
+  }
+  const assessment = (await pool.query("SELECT * FROM shop_assessments WHERE shop_id=$1 AND status='approved'",[shop.id])).rows[0];
+  if(assessment) {
+    return {
+      category: shop.category,
+      branches: shop.branches || 1,
+      amountMinor: assessment.approved_amount_minor,
+      currency: 'INR',
+      period: 'month',
+      version: `shop-${shop.id}-${assessment.revision}`,
+      baseAmountMinor: assessment.approved_amount_minor,
+      additionalBranchAmountMinor: 0,
+      reason: assessment.reason
+    };
+  }
   if(!needsAssessment(shop)) return basicQuote(shop);
-  const assessment = (await pool.query('SELECT * FROM shop_assessments WHERE shop_id=$1',[shop.id])).rows[0];
-  if(assessment?.status !== 'approved') return { requiresReview:true, period:'month', currency:'INR', message:'Your shop size, branches and photo storage need an owner-approved monthly quote before payment.' };
-  return { category:shop.category, branches:shop.branches, amountMinor:assessment.approved_amount_minor, currency:'INR',period:'month',version:`shop-${shop.id}-${assessment.revision}`,baseAmountMinor:assessment.approved_amount_minor,additionalBranchAmountMinor:0, reason:assessment.reason };
+  const pending = (await pool.query('SELECT * FROM shop_assessments WHERE shop_id=$1',[shop.id])).rows[0];
+  if(pending?.status !== 'approved') return { requiresReview:true, period:'month', currency:'INR', message:'Your shop size, branches and photo storage need an owner-approved monthly quote before payment.' };
+  return { category:shop.category, branches:shop.branches, amountMinor:pending.approved_amount_minor, currency:'INR',period:'month',version:`shop-${shop.id}-${pending.revision}`,baseAmountMinor:pending.approved_amount_minor,additionalBranchAmountMinor:0, reason:pending.reason };
 }
 export const aiConfigured = () => Boolean(process.env.OPENAI_API_KEY && process.env.PRICING_AI_MODEL);
 const suggestionSchema = z.object({ monthlyAmountMinor:z.number().int().min(49900).max(10000000), reason:z.string().min(10).max(1500), estimatedStorageMB:z.number().min(0).max(1000000) });

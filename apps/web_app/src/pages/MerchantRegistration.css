@@ -1,0 +1,143 @@
+.ait-business-registration { max-width: 1220px; padding-bottom: 80px; }
+.ait-business-registration .br-topline { display: flex; justify-content: space-between; gap: 18px; align-items: center; margin-bottom: 40px; }
+.ait-business-registration .br-back, .ait-business-registration .br-dashboard-link { display: inline-flex; align-items: center; gap: 6px; color: #657083; font-size: 13px; text-decoration: none; }
+.ait-business-registration .br-dashboard-link { color: #c94328; font-weight: 650; }
+.ait-business-registration .br-header { max-width: 740px; margin: 0 auto 38px; text-align: center; }
+.ait-business-registration .br-label { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 750; letter-spacing: 1.3px; color: #bb4029; background: #fff0e9; padding: 9px 13px; border-radius: 30px; }
+.ait-business-registration .br-header h1 { font-size: clamp(34px, 4.6vw, 54px); letter-spacing: -1.8px; line-height: 1.12; margin: 20px 0 16px; }
+.ait-business-registration .br-header h1 span { color: var(--ait-primary, #f95738); }
+.ait-business-registration .br-header > p { max-width: 610px; margin: auto; color: #6a7282; font-size: 15px; line-height: 1.8; }
+.ait-business-registration .br-steps { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); padding: 24px 0; margin: 0 0 30px; border-top: 1px solid #e4e7ec; border-bottom: 1px solid #e4e7ec; }
+.ait-business-registration .br-steps li { position: relative; display: flex; align-items: center; justify-content: center; gap: 10px; color: #8d95a3; font-size: 12px; }
+.ait-business-registration .br-steps li + li::before { content: ""; width: 24px; height: 1px; background: #dce1e8; position: absolute; left: -12px; }
+.ait-business-registration .br-steps li > span { display: grid; place-items: center; width: 27px; height: 27px; flex: 0 0 auto; border: 1px solid #dce1e8; border-radius: 50%; font-weight: 700; background: #fff; }
+.ait-business-registration .br-steps .is-current { color: #c8442c; }
+.ait-business-registration .br-steps .is-current > span { background: #f95738; border-color: #f95738; color: white; box-shadow: 0 0 0 5px #fff0eb; }
+.ait-business-registration .br-steps .is-complete { color: #425d4f; }
+.ait-business-registration .br-steps .is-complete > span { background: #e8f3eb; color: #287948; border-color: #e8f3eb; }
+.ait-business-registration .br-layout { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 26px; align-items: start; }
+.ait-business-registration .br-card { border: 1px solid #e4e7ec; border-radius: 20px; padding: 32px; background: #fff; min-width: 0; }
+.ait-business-registration .br-overline { font-size: 10px; font-weight: 750; letter-spacing: 1.3px; color: #7a8393; }
+.ait-business-registration .br-card h2 { font-size: 24px; letter-spacing: -.5px; margin: 9px 0 10px; }
+.ait-business-registration .br-card h3 { font-size: 17px; margin: 18px 0 10px; }
+.ait-business-registration .br-card p { color: #6a7282; font-size: 14px; line-height: 1.8; }
+.ait-business-registration .br-icon { background: #fff0e9; color: #e34e32; display: grid; place-items: center; width: 58px; height: 58px; border-radius: 16px; flex: 0 0 auto; }
+.ait-business-registration .br-account-card { padding: 40px; }
+.ait-business-registration .br-account-card .br-icon { margin-bottom: 28px; }
+.ait-business-registration .br-account-card h2 { margin-top: 14px; }
+.ait-business-registration .br-account-card > p { max-width: 470px; margin-bottom: 25px; }
+.ait-business-registration .btn-primary, .ait-business-registration .btn-secondary { display: inline-flex; justify-content: center; align-items: center; gap: 9px; font-size: 13px; font-weight: 650; line-height: 1.4; min-height: 43px; padding: 12px 18px; border-radius: 10px; text-decoration: none; }
+.ait-business-registration .btn-secondary { border: 1px solid #dce1e8; color: #384253; background: #fff; }
+.ait-business-registration .br-small { font-size: 12px !important; line-height: 1.8; color: #737d8b; }
+.ait-business-registration .br-small a { color: #c8442c; text-decoration: underline; text-underline-offset: 3px; }
+.ait-business-registration .br-benefits { border: 1px solid #f0e3d4; background: #fff9f1; border-radius: 20px; padding: 30px 25px; }
+.ait-business-registration .br-benefits h3 { font-size: 20px; letter-spacing: -.3px; line-height: 1.5; margin: 0 0 25px; }
+.ait-business-registration .br-benefits p, .ait-business-registration .br-summary-benefits p { display: flex; gap: 11px; align-items: flex-start; font-size: 13px; color: #667080; line-height: 1.7; margin: 20px 0; }
+.ait-business-registration .br-benefits p svg, .ait-business-registration .br-summary-benefits p svg { flex-shrink: 0; margin-top: 2px; color: #e35936; }
+.ait-business-registration .br-benefits > .br-icon { margin-bottom: 23px; }
+.ait-business-registration .br-benefits hr { height: 1px; background: #eadfce; border: 0; margin: 25px 0; }
+.ait-business-registration .br-benefits .br-small { display: block; margin-bottom: 0; }
+.ait-business-registration .br-registration-form { gap: 25px; }
+.ait-business-registration .br-section-title p { margin: 0; }
+.ait-business-registration .br-registration-form fieldset { display: flex; flex-direction: column; gap: 20px; border: 0; border-top: 1px solid #edf0f4; padding: 22px 0 0; margin: 0; min-width: 0; }
+.ait-business-registration .br-registration-form legend { padding-right: 14px; font-size: 14px; font-weight: 700; }
+.ait-business-registration .ait-form label { font-size: 12px; color: #394254; gap: 8px; }
+.ait-business-registration .ait-form input, .ait-business-registration .ait-form select, .ait-business-registration .ait-form textarea { font: inherit; font-size: 13px; line-height: 1.5; border: 1px solid #dce1e8; border-radius: 9px; background: #fff; padding: 11px 12px; width: 100%; box-sizing: border-box; }
+.ait-business-registration .ait-form textarea { resize: vertical; }
+.ait-business-registration .ait-form input::placeholder, .ait-business-registration .ait-form textarea::placeholder { color: #9ba3af; }
+.ait-business-registration .ait-form input:focus, .ait-business-registration .ait-form select:focus, .ait-business-registration .ait-form textarea:focus { outline: 2px solid #f6b7a8; outline-offset: 1px; border-color: #f95738; }
+.ait-business-registration .ait-form-grid { gap: 20px 18px; }
+.ait-business-registration .br-optional { font-size: 11px; color: #8b93a0; font-weight: 400; }
+.ait-business-registration .br-photo-label { gap: 10px; }
+.ait-business-registration .br-photo-upload { border: 1px dashed #d4dae3; background: #fafbfd; border-radius: 12px; padding: 17px; display: flex; align-items: center; gap: 18px; color: #9199a6; }
+.ait-business-registration .br-photo-upload img { width: 70px; height: 70px; border-radius: 8px; object-fit: cover; }
+.ait-business-registration .br-photo-upload > span { color: #687384; min-width: 0; overflow-wrap: anywhere; font-size: 12px; flex: 1; }
+.ait-business-registration .br-photo-upload input { display: block; background: transparent; border: 0; padding: 8px 0 0; font-size: 11px; }
+.ait-business-registration .br-fieldset-help { margin: -3px 0 0; font-size: 12px !important; }
+.ait-business-registration .br-capacity-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.ait-business-registration .br-branches { display: flex; flex-direction: column; gap: 16px; }
+.ait-business-registration .br-branch { background: #fafbfd; border: 1px solid #e6e9ef; padding: 20px; border-radius: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.ait-business-registration .br-branch h4 { display: flex; align-items: center; gap: 7px; grid-column: 1 / -1; font-size: 13px; margin: 0 0 2px; }
+.ait-business-registration .br-branch label:nth-of-type(2) { grid-column: 1 / -1; }
+.ait-business-registration .br-branch .br-text-button { align-self: end; justify-self: start; font-size: 11px; }
+.ait-business-registration .br-form-footer { border-top: 1px solid #edf0f4; padding-top: 20px; }
+.ait-business-registration .br-form-footer p { display: flex; gap: 8px; font-size: 11px; align-items: flex-start; margin: 0 0 20px; }
+.ait-business-registration .br-form-footer p svg { flex-shrink: 0; margin-top: 2px; }
+.ait-business-registration .br-form-footer .br-text-button { margin-left: 16px; }
+.ait-business-registration .br-summary { position: sticky; top: 115px; border: 1px solid #e4e7ec; border-radius: 20px; padding: 27px 23px; background: #fff; }
+.ait-business-registration .br-quote > p { font-size: 13px; line-height: 1.8; color: #778190; }
+.ait-business-registration .br-quote .br-price { color: #172130; font-size: 36px; font-weight: 750; letter-spacing: -1.2px; line-height: 1.3; margin: 15px 0 24px; }
+.ait-business-registration .br-price > span { color: #8b94a1; font-size: 12px; font-weight: 400; letter-spacing: 0; }
+.ait-business-registration .br-price-breakdown { display: flex; flex-direction: column; gap: 15px; margin: 0; }
+.ait-business-registration .br-price-breakdown > div { display: flex; justify-content: space-between; gap: 15px; padding: 0; border: 0; }
+.ait-business-registration .br-price-breakdown dt { font-size: 12px; color: #7a8290; }
+.ait-business-registration .br-price-breakdown dd { font-size: 12px; color: #3e4859; font-weight: 600; margin: 0; }
+.ait-business-registration .br-price-breakdown .br-total { padding-top: 18px; border-top: 1px solid #edf0f4; }
+.ait-business-registration .br-total dt, .ait-business-registration .br-total dd { color: #273244; font-weight: 700; }
+.ait-business-registration .br-summary-benefits { margin-top: 28px; padding-top: 22px; border-top: 1px solid #edf0f4; }
+.ait-business-registration .br-summary-benefits h3 { font-size: 15px; margin: 0 0 20px; }
+.ait-business-registration .br-summary-benefits p { margin: 15px 0; font-size: 12px; }
+.ait-business-registration .br-summary-benefits p svg { color: #35935b; }
+.ait-business-registration .br-secure { display: flex; gap: 7px; font-size: 10px; color: #8d96a4; margin: 28px 0 0; align-items: center; }
+.ait-business-registration .br-shop-heading { display: flex; gap: 16px; align-items: center; margin: 23px 0; }
+.ait-business-registration .br-shop-heading > img { width: 64px; height: 64px; border-radius: 14px; object-fit: cover; flex: 0 0 auto; }
+.ait-business-registration .br-shop-heading h2 { margin: 0 0 5px; overflow-wrap: anywhere; }
+.ait-business-registration .br-shop-heading p { display: flex; gap: 5px; align-items: center; margin: 0; font-size: 12px; flex-wrap: wrap; }
+.ait-business-registration .br-payment-card > h3 { border-top: 1px solid #edf0f4; padding-top: 24px; }
+.ait-business-registration .br-payment-card > .br-quote { margin: 25px 0; padding: 24px; border-radius: 13px; border: 1px solid #e4e7ec; background: #fafbfd; }
+.ait-business-registration .br-consent { display: flex; gap: 12px; align-items: flex-start; font-size: 12px; color: #657083; line-height: 1.8; margin: 25px 0 20px; }
+.ait-business-registration .br-consent input { appearance: auto; accent-color: #f95738; flex: 0 0 auto; width: 18px; height: 18px; margin-top: 3px; }
+.ait-business-registration .br-consent strong { color: #344052; }
+.ait-business-registration .br-pay-button { width: 100%; }
+.ait-business-registration .br-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 22px; }
+.ait-business-registration .br-text-button { border: 0; background: transparent; color: #c8442c; padding: 6px 0; font-size: 12px; font-weight: 600; text-align: left; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.ait-business-registration .br-editor { margin-top: 30px; border-top: 1px solid #e4e7ec; padding-top: 12px; }
+.ait-business-registration .br-editor h3 { margin-bottom: 0; }
+.ait-business-registration .br-existing-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin: 42px 0 22px; }
+.ait-business-registration .br-existing-header h2 { font-size: 26px; margin: 8px 0 0; }
+.ait-business-registration .br-existing-shop { margin-bottom: 20px; }
+.ait-business-registration .br-existing-shop .br-shop-heading { margin-top: 0; }
+.ait-business-registration .br-status { display: inline-block; margin-bottom: 8px; color: #9e6a1c; font-size: 10px; font-weight: 700; padding: 4px 8px; background: #fff5dc; border-radius: 5px; }
+.ait-business-registration .br-status.is-active { background: #eaf6ee; color: #2b8150; }
+.ait-business-registration .br-success { border: 1px solid #d6eddf; border-radius: 12px; background: #f2fbf5; padding: 25px; }
+.ait-business-registration .br-success > svg { color: #2c8852; }
+.ait-business-registration .br-success h3 { color: #286e46; margin-top: 12px; }
+.ait-business-registration .br-success p { margin-bottom: 20px; }
+.ait-business-registration .br-cancel { margin: 10px 0 25px; font-size: 13px; color: #697486; }
+.ait-business-registration .br-cancel .br-actions { margin-top: 12px; }
+.ait-business-registration .br-bottom-note { display: flex; align-items: flex-start; justify-content: center; gap: 8px; text-align: center; color: #8b94a3; font-size: 11px; margin: 35px 0 0; line-height: 1.7; }
+.ait-business-registration .br-bottom-note svg { flex-shrink: 0; margin-top: 1px; }
+.ait-business-registration .br-test { font-weight: 650; }
+@media (max-width: 950px) {
+  .ait-business-registration .br-layout { grid-template-columns: minmax(0, 1fr) 270px; gap: 20px; }
+  .ait-business-registration .br-card { padding: 25px; }
+  .ait-business-registration .br-capacity-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .ait-business-registration .br-topline { margin-bottom: 28px; flex-wrap: wrap; }
+  .ait-business-registration .br-header { text-align: left; margin-bottom: 28px; }
+  .ait-business-registration .br-header h1 { font-size: 38px; }
+  .ait-business-registration .br-header > p { font-size: 13px; }
+  .ait-business-registration .br-layout { grid-template-columns: 1fr; }
+  .ait-business-registration .br-summary { position: static; grid-row: 1; }
+  .ait-business-registration .br-summary-benefits, .ait-business-registration .br-summary .br-secure { display: none; }
+  .ait-business-registration .br-summary .br-price { margin-bottom: 18px; }
+  .ait-business-registration .br-steps { padding: 19px 0; }
+  .ait-business-registration .br-steps li { flex-direction: column; gap: 10px; text-align: center; font-size: 10px; line-height: 1.5; }
+  .ait-business-registration .br-steps li + li::before { width: 18px; left: -9px; top: 13px; }
+  .ait-business-registration .br-card { padding: 24px 20px; border-radius: 15px; }
+  .ait-business-registration .br-card h2 { font-size: 22px; }
+  .ait-business-registration .br-existing-header { align-items: flex-start; flex-direction: column; }
+  .ait-business-registration .br-capacity-grid { grid-template-columns: 1fr 1fr; }
+  .ait-business-registration .br-capacity-grid > label:last-child { grid-column: 1 / -1; }
+}
+@media (max-width: 480px) {
+  .ait-business-registration .ait-form-grid, .ait-business-registration .br-branch { grid-template-columns: 1fr; }
+  .ait-business-registration .br-branch label:nth-of-type(2) { grid-column: auto; }
+  .ait-business-registration .br-shop-heading { align-items: flex-start; gap: 12px; }
+  .ait-business-registration .br-shop-heading > img { width: 48px; height: 48px; }
+  .ait-business-registration .br-icon { width: 48px; height: 48px; border-radius: 12px; }
+  .ait-business-registration .br-form-footer .br-text-button { display: block; margin: 15px 0 0; }
+  .ait-business-registration .br-registration-form .br-form-footer > .btn-primary { width: 100%; }
+  .ait-business-registration .br-photo-upload { align-items: flex-start; gap: 10px; padding: 14px; }
+}

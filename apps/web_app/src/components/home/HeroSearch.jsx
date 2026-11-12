@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, ArrowRight } from 'lucide-react';
 import './HeroSearch.css';
 import {useSite} from '../../SiteContext';
+import LocationInput from '../common/LocationInput';
 
 export default function HeroSearch({section}) {
   const {site}=useSite();
@@ -13,20 +14,10 @@ export default function HeroSearch({section}) {
   const handleSearch = (e) => {
     e.preventDefault();
     const params = new URLSearchParams();
-    if (keyword.trim()) params.append('query', keyword.trim());
-    if (location.trim()) params.append('location', location.trim());
+    for(const [name,value] of new FormData(e.currentTarget))if(String(value).trim())params.set(name,String(value).trim());
     navigate(`/listings?${params.toString()}`);
   };
 
-  const defaultTags = [
-    { label: 'Cars', category: 'Vehicles' },
-    { label: 'Property', category: 'Property' },
-    { label: 'Jobs', category: 'Jobs' },
-    { label: 'Mobiles', category: 'Mobiles' },
-    { label: 'Electronics', category: 'Electronics' },
-    { label: 'Services', category: 'Services' },
-    { label: 'Furniture', category: 'Furniture' },
-  ];
   const popularTags=site.popular;
 
   return (
@@ -52,7 +43,10 @@ export default function HeroSearch({section}) {
             <div className="capsule-field query-field">
               <Search size={16} className="capsule-icon" />
               <input 
-                type="text"
+                type="search"
+                name="query"
+                aria-label="Search shops and listings"
+                maxLength={100}
                 placeholder="What are you looking for?"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
@@ -64,12 +58,7 @@ export default function HeroSearch({section}) {
             {/* Location Input */}
             <div className="capsule-field location-field">
               <MapPin size={16} className="capsule-icon" />
-              <input 
-                type="text"
-                placeholder="Location"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-              />
+              <LocationInput value={location} onChange={setLocation} cancelPendingOnSubmit variant="hero" placeholder="All areas" />
             </div>
 
             {/* Blue Pill Button: Search → */}
@@ -78,6 +67,7 @@ export default function HeroSearch({section}) {
               <ArrowRight size={14} />
             </button>
           </form>
+          <p className="hero-location-note">Leave location blank to search all areas. Add a city or use your location to narrow results.</p>
 
           {/* Popular Tags Row matching Figma Desktop - 71 */}
           <div className="figma-popular-row">

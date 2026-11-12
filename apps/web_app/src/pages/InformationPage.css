@@ -1,0 +1,106 @@
+.ait-play-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin: 28px 0 36px;
+}
+
+.ait-play-card {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 26px;
+  border: 1px solid #dfe5ed;
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.ait-play-card .ait-eyebrow {
+  margin: 0 0 12px;
+  font-size: .68rem;
+  line-height: 1.6;
+}
+
+.ait-prose .ait-play-card h2 {
+  font-size: 1.45rem;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.ait-play-card .ait-play-description {
+  min-height: 6.8em;
+  color: #526175;
+}
+
+.ait-prose .ait-play-card p {
+  line-height: 1.7;
+}
+
+.ait-play-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  width: 100%;
+  text-align: center;
+  font-size: .92rem;
+  padding: 12px 16px;
+  white-space: normal;
+}
+
+.ait-play-qr {
+  margin: 24px 0 0;
+  width: 100%;
+  text-align: center;
+}
+
+.ait-play-qr a {
+  display: inline-block;
+  line-height: 0;
+  border-radius: 8px;
+}
+
+.ait-play-qr img {
+  display: block;
+  width: 208px;
+  height: 208px;
+  max-width: 100%;
+  background: #fff;
+}
+
+.ait-play-qr figcaption {
+  max-width: 240px;
+  margin: 10px auto 0;
+  font-size: .8rem;
+  line-height: 1.6;
+  color: #526175;
+}
+
+.ait-play-card .ait-play-web-link {
+  margin: 20px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid #dfe5ed;
+  font-size: .86rem;
+}
+
+@media (max-width: 720px) {
+  .ait-play-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  .ait-play-card {
+    padding: 20px;
+  }
+
+  .ait-play-card .ait-play-description {
+    min-height: 0;
+  }
+
+  .ait-play-qr img {
+    width: 192px;
+    height: 192px;
+  }
+}

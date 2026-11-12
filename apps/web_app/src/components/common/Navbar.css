@@ -44,15 +44,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 76px;
+  min-height: 112px;
 }
 
 /* Brand text matching Figma Desktop - 71 */
 .figma-navbar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   text-decoration: none;
 }
 
 .figma-brand-text {
+  white-space: nowrap;
   font-family: 'Playfair Display', Georgia, serif;
   font-size: 1.55rem;
   font-weight: 700;
@@ -129,7 +133,14 @@
   display: none;
 }
 
-@media (max-width: 860px) {
+.figma-business-link {
+  border: 1px solid #ffffff45;
+  border-radius: 10px;
+  padding: 10px 12px;
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
   .figma-desktop-nav {
     display: none;
   }

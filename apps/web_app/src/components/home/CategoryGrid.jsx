@@ -6,65 +6,6 @@ import {useSite} from '../../SiteContext';
 
 export default function CategoryGrid({section}) {
   const {site}=useSite();
-  // Matching exact 8 cards from the Figma presentation screenshot (node-id=99-109)
-  const originalCategories = [
-    {
-      id: 'cat_vehicles',
-      imagePath: '/images/h1.png',
-      title: 'Vehicles',
-      subtitle: 'Car , Bike & Commercial',
-      route: '/listings?category=Vehicles',
-    },
-    {
-      id: 'cat_property',
-      imagePath: '/images/h2.png',
-      title: 'Property',
-      subtitle: 'Buy , rent & lease',
-      route: '/listings?category=Property',
-    },
-    {
-      id: 'cat_jobs',
-      imagePath: '/images/h3.png',
-      title: 'Jobs',
-      subtitle: 'Full-time , Part - time',
-      route: '/listings?category=Jobs',
-    },
-    {
-      id: 'cat_groceries',
-      imagePath: '/images/h4.png',
-      title: 'Groceries',
-      subtitle: 'Fresh vegetables & produce',
-      route: '/listings?category=Groceries',
-    },
-    {
-      id: 'cat_electronics',
-      imagePath: '/images/h5.png',
-      title: 'Electronics',
-      subtitle: 'Laptops, audio & appliances',
-      route: '/listings?category=Electronics',
-    },
-    {
-      id: 'cat_mobiles',
-      imagePath: '/images/h6.png',
-      title: 'Mobiles',
-      subtitle: 'Phones, tablets & accessories',
-      route: '/listings?category=Mobiles',
-    },
-    {
-      id: 'cat_services',
-      imagePath: '/images/h7.png',
-      title: 'Services',
-      subtitle: 'Home, repair & cleaning',
-      route: '/listings?category=Services',
-    },
-    {
-      id: 'cat_furniture',
-      imagePath: '/images/h8.png',
-      title: 'Furniture',
-      subtitle: 'Living, bed & dining sets',
-      route: '/listings?category=Furniture',
-    },
-  ];
   const categories=site.categories.map(category=>({id:category.id,title:category.name,subtitle:category.subtitle,imagePath:category.image_path||'/images/h.png',route:'/listings?category='+encodeURIComponent(category.name)}));
 
   return (

@@ -1,0 +1,21 @@
+.ait-dialog { box-sizing: border-box; width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); margin: auto; padding: 0; overflow-y: auto; border: 1px solid #e4e9ef; border-radius: 22px; background: #fff; color: #243449; box-shadow: 0 28px 90px #0f172a38; font: inherit; }
+.ait-dialog::backdrop { background: #0f172a99; backdrop-filter: blur(4px); }
+.ait-dialog-form { padding: 28px; }
+.ait-dialog-heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 20px; }
+.ait-dialog-icon { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; flex-shrink: 0; border-radius: 14px; background: #fff0e9; color: #d65b37; }
+.ait-dialog-close { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: #f3f5f8; color: #708093; cursor: pointer; }
+.ait-dialog h2 { margin: 0 0 12px; font-size: 1.35rem; font-weight: 750; line-height: 1.4; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.ait-dialog-message { color: #6b7889; font-size: .9rem; line-height: 1.75; white-space: pre-line; margin: 0; overflow-wrap: anywhere; }
+.ait-dialog-field { display: flex; flex-direction: column; gap: 9px; font-size: .83rem; font-weight: 600; margin-top: 22px; }
+.ait-dialog-field input { box-sizing: border-box; min-width: 0; width: 100%; border: 1px solid #dce3eb; border-radius: 10px; padding: 12px 13px; background: #fbfcfe; color: #243449; font: inherit; font-weight: 400; font-size: 1rem; }
+.ait-dialog-error { color: #b33a2e; font-size: .8rem; line-height: 1.6; margin: 9px 0 0; }
+.ait-dialog-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 28px; }
+.ait-dialog-button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 11px 18px; border: 1px solid transparent; border-radius: 11px; font: inherit; font-size: .85rem; font-weight: 650; line-height: 1.5; cursor: pointer; }
+.ait-dialog-cancel { color: #415168; border-color: #dce3eb; background: #fff; }
+.ait-dialog-cancel:hover { background: #f4f7fa; }
+.ait-dialog-accept { background: var(--ait-primary, #f95738); color: #fff; }
+.ait-dialog-accept:hover { filter: brightness(.94); }
+.ait-dialog-danger .ait-dialog-icon { background: #fff0ec; color: #c44b36; }
+.ait-dialog-danger .ait-dialog-accept { background: #c94b36; }
+.ait-dialog :is(button, input):focus-visible { outline: 3px solid #ec947c; outline-offset: 3px; }
+@media (max-width: 520px) { .ait-dialog-form { padding: 24px; } .ait-dialog-actions { flex-wrap: wrap; } .ait-dialog-actions > button { flex: 1; } .ait-dialog h2 { font-size: 1.25rem; } }

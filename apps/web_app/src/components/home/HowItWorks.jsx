@@ -6,12 +6,12 @@ export default function HowItWorks() {
     {
       num: '01',
       title: 'Search',
-      desc: 'Find products, services, jobs and properties.',
+      desc: 'Find products and services from local businesses.',
     },
     {
       num: '02',
       title: 'Connect',
-      desc: 'Chat or call and negotiate directly to the seller.',
+      desc: 'Send a question directly to the shop or listing owner.',
     },
     {
       num: '03',

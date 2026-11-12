@@ -2,16 +2,18 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchListings } from "../../api/client";
 import ListingCard from "../common/ListingCard";
+import {startPublicCatalogueRefresh} from "../../publicCatalogueRefresh";
 export default function TrendingSection({ favorites, onToggleFavorite, section }) {
   const [items, setItems] = useState([]),
     [error, setError] = useState(""),
     [loading, setLoading] = useState(true);
-  useEffect(() => {
-    fetchListings({category:section?.category})
-      .then((x) => setItems(x.slice(0, 6)))
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [section?.category]);
+  useEffect(() => startPublicCatalogueRefresh({
+    load:signal=>fetchListings({category:section?.category},{signal}),
+    onPending:()=>setLoading(true),
+    onData:rows=>{setItems(rows.slice(0,6));setError("");},
+    onError:failure=>setError(failure.message),
+    onSettled:()=>setLoading(false),
+  }), [section?.category]);
   return (
     <section className="ait-home-section container">
       <div className="section-header">
@@ -25,11 +27,12 @@ export default function TrendingSection({ favorites, onToggleFavorite, section }
           Explore all →
         </Link>
       </div>
-      {error ? (
+      {error && (
         <p role="alert" className="ait-error">
-          {error}
+          {error}{items.length ? " Your last loaded listings are still shown." : ""}
         </p>
-      ) : loading ? (
+      )}
+      {loading&&!items.length ? (
         <p>Loading the latest finds…</p>
       ) : items.length ? (
         <div className="ait-listing-grid">
@@ -42,7 +45,7 @@ export default function TrendingSection({ favorites, onToggleFavorite, section }
             />
           ))}
         </div>
-      ) : (
+      ) : !error && (
         <div className="ait-empty">
           <h3>New discoveries are on their way.</h3>
           <p>Browse categories and check back for listings from local shops.</p>
@@ -53,12 +56,12 @@ export default function TrendingSection({ favorites, onToggleFavorite, section }
           <p className="ait-eyebrow">TAKE YOUR MARKETPLACE WITH YOU</p>
           <h2>All in One Today, on Android.</h2>
           <p>
-            Browse and connect with the public app. Grow your business with the
-            shop-owner app.
+            Browse local shops in All in One Today. Platform administrators
+            manage the marketplace with All in One Business.
           </p>
         </div>
         <Link className="btn-dark" to="/download">
-          Get the apps →
+          Get Android apps on Google Play →
         </Link>
       </div>}
     </section>

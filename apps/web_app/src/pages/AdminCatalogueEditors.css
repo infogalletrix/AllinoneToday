@@ -1,0 +1,31 @@
+.ait-catalogue-photo{display:flex;flex-direction:column;align-items:flex-start;gap:10px;max-width:240px;min-width:0}
+.ait-catalogue-photo img{width:100%;height:160px;object-fit:contain;border-radius:12px;background:#f1f5f9}
+.ait-catalogue-gallery{display:flex;gap:18px;flex-wrap:wrap}
+.ait-catalogue-spec{display:grid;grid-template-columns:1fr 1fr auto;align-items:end;gap:14px;margin:16px 0}
+.admin-price-preview{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding:14px 16px;background:#f7faf8;border:1px solid #e2ece6;border-radius:10px}
+.admin-price-preview>span{font-size:.74rem;color:#6f8478}
+.admin-price-preview .product-price-current{font-size:1.05rem}
+.admin-spec-count{display:block;margin-top:10px}
+.admin-selected-shop{display:flex;flex-direction:column;gap:6px;padding:14px 16px;border:1px solid #e1e9f2;border-radius:10px;background:#f6f9fc;overflow-wrap:anywhere}
+.admin-selected-shop strong{font-size:.81rem;color:#526b87;font-weight:650}
+.admin-selected-shop span{font-size:.72rem;color:#8493a5;line-height:1.7}
+.admin-category-field{display:flex;flex-direction:column;gap:8px;min-width:0}
+.admin-category-select-row{display:flex;align-items:flex-end;gap:12px;min-width:0}
+.admin-category-select-row>label{flex:1;min-width:0}
+.admin-category-select-row .admin-add-category{flex-shrink:0;min-height:46px;margin:0!important;font-size:.76rem}
+.admin-category-help{display:block}
+.admin-inline-category{display:flex;flex-direction:column;gap:16px;padding:20px;border:1px solid #e6d4c5;border-radius:12px;background:#fffbf7;margin-top:5px;min-width:0}
+.admin-inline-category h3{margin:0;font-size:.94rem;color:#765b46}
+.admin-inline-category .ait-form-grid{align-items:start}
+.admin-inline-category .ait-error{margin:0!important}
+.admin-inline-category-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.admin-inline-category-actions .btn-primary,.admin-inline-category-actions .btn-secondary{margin:0!important;min-height:40px;font-size:.76rem}
+.admin-dashboard .admin-editor-actions.is-category-editing{position:static}
+.admin-owner-password{display:flex;flex-direction:column;gap:9px;min-width:0}
+.admin-owner-password-input{display:flex;align-items:stretch;gap:8px;min-width:0}
+.admin-owner-password-input input{flex:1;min-width:0;width:100%}
+.admin-owner-password-input button{flex-shrink:0;padding:9px 12px;border:1px solid #dce3eb;border-radius:9px;background:#fff;color:#52687c;font:inherit;font-size:.75rem;min-height:44px}
+.admin-owner-password>.btn-secondary{align-self:flex-start;margin:0!important;font-size:.75rem!important;min-height:40px!important}
+.admin-owner-password small{font-size:.7rem;line-height:1.7;color:#75889a}
+@media(max-width:600px){.admin-category-select-row{gap:9px}.admin-category-select-row .admin-add-category{font-size:.69rem;padding:10px 11px;min-height:46px}.admin-inline-category{padding:16px}.admin-inline-category .ait-form-grid{grid-template-columns:1fr;gap:16px}.admin-inline-category-actions{display:grid;grid-template-columns:1fr 1fr}.admin-inline-category-actions button{width:100%;align-self:stretch}}
+@media(max-width:700px){.ait-catalogue-spec{grid-template-columns:1fr}.ait-catalogue-gallery{gap:12px}.ait-catalogue-photo{max-width:100%}}

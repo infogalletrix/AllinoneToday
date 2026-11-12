@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { X, Upload, CheckCircle, AlertCircle, Sparkles } from 'lucide-react';
 import { createListing } from '../../api/client';
 import './PostAdModal.css';
+import { useDialogs } from './DialogProvider';
 
 export default function PostAdModal({ isOpen, onClose, onListingCreated }) {
+  const { alert } = useDialogs();
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('Vehicles');
   const [price, setPrice] = useState('');
@@ -19,7 +21,7 @@ export default function PostAdModal({ isOpen, onClose, onListingCreated }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title || !price) {
-      alert('Please fill in title and price');
+      await alert({ title: 'Complete your listing', message: 'Please fill in the title and price before publishing.', confirmLabel: 'Continue editing' });
       return;
     }
 

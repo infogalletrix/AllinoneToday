@@ -1,0 +1,16 @@
+.marketplace-search-filters.ait-search { display:grid;grid-template-columns:minmax(180px,1.35fr) minmax(180px,1.2fr) minmax(140px,.9fr) minmax(140px,.9fr);gap:16px;align-items:start;padding:22px;border:1px solid #e0e7ee;border-radius:16px;background:#fff;margin-bottom:20px; }
+.search-filter-field { display:flex;flex-direction:column;gap:8px;min-width:0; }
+.search-filter-field>span { font-size:.73rem;font-weight:650;color:#526579;line-height:1.5; }
+.marketplace-search-filters.ait-search input,.marketplace-search-filters.ait-search select { width:100%;min-width:0;min-height:46px;font:inherit;font-size:.84rem;border:1px solid #dce3eb;border-radius:10px;padding:12px; }
+.marketplace-search-filters.ait-search .location-input input { min-height:44px;border:0;background:transparent;box-shadow:none;padding-right:4px; }
+.search-filter-actions { grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap; }
+.search-filter-actions button { min-height:44px;min-width:125px; }
+.search-filter-hint { grid-column:1/-1;margin:0;font-size:.72rem;line-height:1.6;color:#7a8c9d; }
+.search-applied-filters { display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 22px; }
+.search-applied-filters span { display:inline-flex;max-width:100%;padding:7px 12px;border-radius:8px;background:#eaf1f5;color:#506779;font-size:.74rem;line-height:1.5;overflow-wrap:anywhere; }
+.search-refresh-status { font-size:.8rem;color:#6b7f93; }
+.public-shop-search-form.marketplace-search-filters.ait-search { grid-template-columns:minmax(180px,1.35fr) minmax(180px,1.2fr) minmax(140px,.9fr); }
+.public-shop-search-form .public-shops-filter { min-width:0; }
+.public-shop-search-form .search-filter-actions>.btn-primary { display:inline-flex;align-items:center;justify-content:center;gap:8px; }
+@media(max-width:1000px) { .marketplace-search-filters.ait-search { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:620px) { .marketplace-search-filters.ait-search,.public-shop-search-form.marketplace-search-filters.ait-search { grid-template-columns:1fr;padding:17px;gap:14px; } .search-filter-actions button { flex:1;min-width:0; } .marketplace-search-filters.ait-search input,.marketplace-search-filters.ait-search select { font-size:16px; } }

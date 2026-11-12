@@ -1,366 +1,55 @@
-/* ═════════════════════════════════════════════════════════════════
-   Vehicle Shops Page Styling - Matching Figma Screenshot (Desktop - 72)
-   ═════════════════════════════════════════════════════════════════ */
-
-.shops-page-root {
-  background-color: #ffffff;
-  min-height: 100vh;
-}
-
-.vehicle-shops-main-section {
-  padding: 24px 0 64px 0;
-  background-color: #ffffff;
-}
-
-.vehicle-shops-container {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 0 32px;
-}
-
-/* ── Back Navigation Button ── */
-.shops-nav-back-row {
-  margin-bottom: 18px;
-}
-
-.vehicle-shops-back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: #ffffff;
-  border: 1px solid #E2E8F0;
-  border-radius: 8px;
-  padding: 6px 14px;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: #334155;
-  text-decoration: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-  transition: all 0.15s ease;
-}
-
-.vehicle-shops-back-btn:hover {
-  background: #F8FAFC;
-  border-color: #CBD5E1;
-  color: #0F172A;
-}
-
-/* ── Header Row: Title & Subtitle on Left, Inline Search on Right ── */
-.vehicle-shops-header-row {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 28px;
-  margin-bottom: 28px;
-  flex-wrap: wrap;
-}
-
-.shops-title-col {
-  max-width: 520px;
-}
-
-.shops-title-serif {
-  font-family: 'Playfair Display', Georgia, serif;
-  font-size: 2.15rem;
-  font-weight: 700;
-  color: #0F172A;
-  margin: 0 0 6px 0;
-  letter-spacing: -0.015em;
-  line-height: 1.15;
-}
-
-.shops-subtitle-clean {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 0.85rem;
-  color: #64748B;
-  margin: 0;
-  line-height: 1.5;
-  font-weight: 400;
-}
-
-/* ── Right Inline Pill Search Bar ── */
-.shops-pill-search-bar {
-  display: flex;
-  align-items: center;
-  background: #ffffff;
-  border: 1px solid #E2E8F0;
-  border-radius: 9999px;
-  padding: 4px 6px 4px 16px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.shops-pill-search-bar:focus-within {
-  border-color: #94A3B8;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
-}
-
-.search-bar-input-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.search-pill-icon {
-  color: #94A3B8;
-  flex-shrink: 0;
-}
-
-.search-pill-input {
-  border: none;
-  background: transparent;
-  outline: none;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 0.82rem;
-  color: #0F172A;
-  width: 155px;
-}
-
-.search-pill-input::placeholder {
-  color: #94A3B8;
-}
-
-.search-pill-location {
-  width: 85px;
-}
-
-.search-pill-divider {
-  width: 1px;
-  height: 20px;
-  background-color: #E2E8F0;
-  margin: 0 12px;
-}
-
-.search-pill-submit-btn {
-  background: #2563EB;
-  color: #ffffff;
-  border: none;
-  border-radius: 9999px;
-  padding: 8px 18px;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 0.8rem;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  transition: background-color 0.15s ease, transform 0.15s ease;
-  flex-shrink: 0;
-}
-
-.search-pill-submit-btn:hover {
-  background: #1D4ED8;
-  transform: translateY(-1px);
-}
-
-/* ── 3x3 Grid of 9 Vehicle Shop Cards ── */
-.vehicle-shops-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 22px;
-}
-
-.vehicle-shop-card {
-  background: #ffffff;
-  border: 1px solid #E2E8F0;
-  border-radius: 14px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-.vehicle-shop-card:hover {
-  transform: translateY(-3px);
-  border-color: #CBD5E1;
-  box-shadow: 0 10px 24px -4px rgba(0, 0, 0, 0.07);
-}
-
-/* ── Card Image Wrap ── */
-.shop-card-image-wrap {
-  position: relative;
-  width: 100%;
-  height: 175px;
-  background-color: #F1F5F9;
-  overflow: hidden;
-}
-
-.shop-card-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.35s ease;
-}
-
-.vehicle-shop-card:hover .shop-card-img {
-  transform: scale(1.04);
-}
-
-/* Bottom Left Vehicles Count Pill */
-.shop-badge-vehicles {
-  position: absolute;
-  bottom: 10px;
-  left: 10px;
-  background: rgba(15, 23, 42, 0.72);
-  backdrop-filter: blur(4px);
-  color: #ffffff;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 20px;
-  letter-spacing: 0.01em;
-  pointer-events: none;
-}
-
-/* Top Right Action Button: Circular Heart / Arrow */
-.shop-action-btn-circle {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #ffffff;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #475569;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-  cursor: pointer;
-  transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease;
-  z-index: 2;
-  text-decoration: none;
-}
-
-.shop-action-btn-circle:hover {
-  transform: scale(1.08);
-  background: #FAFAFA;
-}
-
-.shop-action-btn-circle.is-favorited {
-  color: #EF4444;
-}
-
-/* ── Card Body ── */
-.shop-card-body {
-  padding: 14px 16px 16px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.shop-card-title {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 0.96rem;
-  font-weight: 700;
-  color: #0F172A;
-  margin: 0;
-  letter-spacing: -0.01em;
-}
-
-/* Meta Row */
-.shop-card-meta-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 0.76rem;
-  color: #64748B;
-}
-
-.shop-meta-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.shop-meta-icon {
-  color: #94A3B8;
-  flex-shrink: 0;
-}
-
-/* Rating & Trust Row */
-.shop-card-rating-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 0.74rem;
-  margin-top: 1px;
-}
-
-.shop-rating-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-weight: 700;
-  color: #0F172A;
-}
-
-.shop-star-orange {
-  color: #F59E0B;
-  fill: #F59E0B;
-}
-
-.shop-rating-dot {
-  color: #CBD5E1;
-  font-size: 0.7rem;
-}
-
-.shop-trust-badge {
-  color: #64748B;
-  font-weight: 500;
-}
-
-/* ── Responsive ── */
-@media (max-width: 980px) {
-  .vehicle-shops-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 18px;
-  }
-
-  .vehicle-shops-header-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 18px;
-  }
-
-  .shops-pill-search-bar {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .search-pill-input {
-    width: 100%;
-  }
-}
-
-@media (max-width: 600px) {
-  .vehicle-shops-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .shops-pill-search-bar {
-    flex-direction: column;
-    border-radius: 16px;
-    padding: 12px;
-    gap: 10px;
-    align-items: stretch;
-  }
-
-  .search-pill-divider {
-    display: none;
-  }
-
-  .search-pill-location {
-    width: 100%;
-  }
-
-  .search-pill-submit-btn {
-    justify-content: center;
-  }
-}
+.public-shops-page { max-width: 1240px; }
+.public-shops-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 28px; margin-bottom: 28px; }
+.public-shops-heading > div { max-width: 740px; }
+.public-shops-heading .ait-eyebrow { margin: 0; }
+.public-shops-heading h1 { margin-bottom: 16px; }
+.public-shops-heading > div > p:last-child { color: #7a8795; line-height: 1.75; font-size: .96rem; margin: 0; }
+.public-shops-refresh { display: inline-flex; align-items: center; justify-content: center; gap: 9px; flex-shrink: 0; border: 1px solid #dce3ea; border-radius: 11px; padding: 13px 16px; background: #fff; color: #4e5d6c; font-size: .8rem; font-weight: 650; }
+.public-shops-refresh:disabled { opacity: .6; }
+.public-shops-refresh .is-refreshing { animation: public-shop-spin 1.5s linear infinite; }
+.public-shops-tools { display: flex; gap: 14px; margin-bottom: 20px; }
+.public-shops-search { display: flex; align-items: center; gap: 11px; padding: 15px 18px; border: 1px solid #dfe6ed; background: #fff; border-radius: 12px; flex: 1; min-width: 0; color: #8b97a4; }
+.public-shops-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: .87rem; color: #344454; }
+.public-shops-search:focus-within { outline: 2px solid #ee947a; outline-offset: 1px; }
+.public-shops-filter { display: flex; min-width: 200px; }
+.public-shops-filter select { padding: 14px 36px 14px 17px; width: 100%; border: 1px solid #dfe6ed; border-radius: 12px; background: #fff; color: #5e6c7b; font: inherit; font-size: .84rem; }
+.public-shops-filter select:focus-visible, .public-shops-refresh:focus-visible, .public-shop-action:focus-visible { outline: 2px solid #e0704e; outline-offset: 3px; }
+.public-shops-results { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin: 14px 0 24px; font-size: .8rem; color: #7b8998; }
+.public-shops-results p { margin: 0; }
+.public-shops-results button { background: none; border: 0; color: #be5438; font-size: .8rem; text-decoration: underline; text-underline-offset: 3px; }
+.public-shops-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: 24px; }
+.public-shops-more { display: flex; justify-content: center; margin-top: 28px; }
+.public-shops-more button:disabled { opacity: .6; cursor: wait; }
+.public-shop-card { background: #fff; border: 1px solid #e1e7ed; border-radius: 18px; overflow: hidden; min-width: 0; scroll-margin-top: 110px; transition: box-shadow .2s, border-color .2s; }
+.public-shop-card:hover { border-color: #d0d9e2; box-shadow: 0 9px 27px #182c4209; }
+.public-shop-image-link { display: block; }
+.public-shop-body h2 a { color: inherit; }
+.public-shop-body h2 a:hover { color: #bd5d40; }
+.public-shop-photo { height: 205px; overflow: hidden; position: relative; background: #edf2f5; }
+.public-shop-photo > img { width: 100%; height: 100%; object-fit: cover; }
+.public-shop-photo-placeholder { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 13px; color: #879bac; background: linear-gradient(135deg, #f0f5f7, #e5edf2); }
+.public-shop-photo-placeholder span { font-size: .72rem; letter-spacing: .09em; text-transform: uppercase; font-weight: 600; }
+.public-shop-category { position: absolute; top: 15px; left: 15px; background: #fffffff0; color: #4d5e70; font-size: .69rem; font-weight: 650; padding: 7px 10px; border-radius: 7px; backdrop-filter: blur(5px); }
+.public-shop-body { padding: 22px; }
+.public-shop-body h2 { font-size: 1.18rem; line-height: 1.4; margin: 0 0 11px; overflow-wrap: anywhere; }
+.public-shop-location { display: flex; align-items: flex-start; gap: 7px; color: #7c8a98; font-size: .78rem; margin: 0 0 15px; line-height: 1.5; overflow-wrap: anywhere; }
+.public-shop-location svg { flex-shrink: 0; margin-top: 1px; }
+.public-shop-description { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; color: #748393; font-size: .84rem; line-height: 1.7; white-space: pre-line; margin: 0 0 20px; overflow-wrap: anywhere; }
+.public-shop-meta { display: flex; align-items: center; gap: 17px; padding-top: 16px; border-top: 1px solid #edf0f3; color: #8795a3; font-size: .7rem; }
+.public-shop-meta > span { display: inline-flex; align-items: center; gap: 6px; }
+.public-shop-meta svg { color: #a1aebb; }
+.public-shop-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding-top: 21px; }
+.public-shop-action { display: inline-flex; align-items: center; gap: 7px; font-size: .78rem; font-weight: 650; color: #bc573b; }
+.public-shop-action:hover { color: #9e4027; }
+.public-shop-coming { display: inline-flex; align-items: center; gap: 6px; color: #909ca8; font-size: .69rem; }
+.public-shops-empty, .public-shops-loading { display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center; min-height: 310px; gap: 15px; padding: 40px 24px; border: 1px dashed #dce4ec; background: #fafcfd; border-radius: 18px; color: #93a1af; }
+.public-shops-empty h2 { color: #3d4e60; font-size: 1.4rem; margin: 3px 0 0; }
+.public-shops-empty p, .public-shops-loading p { color: #8291a0; font-size: .87rem; line-height: 1.7; margin: 0; }
+.public-shops-error { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 20px; margin-bottom: 22px; border-radius: 11px; border: 1px solid #f0d9c1; background: #fff8ed; color: #906b3e; font-size: .83rem; }
+.public-shops-error p { line-height: 1.6; margin: 6px 0 0; }
+.public-shops-error button { flex-shrink: 0; border: 1px solid #d6b48a; border-radius: 8px; color: #886139; background: #fff; padding: 10px 15px; font-weight: 650; font-size: .75rem; }
+.public-shops-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+@keyframes public-shop-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .public-shop-card { transition: none; } .public-shops-refresh .is-refreshing { animation: none; } }
+@media (max-width: 1000px) { .public-shops-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } .public-shops-heading h1 { font-size: 2.8rem; } .public-shops-heading { align-items: flex-start; } .public-shops-refresh { margin-top: 3px; } }
+@media (max-width: 620px) { .public-shops-page { padding: 115px 17px 45px; } .public-shops-heading { flex-direction: column; gap: 19px; } .public-shops-heading h1 { font-size: 2.15rem; } .public-shops-heading > div > p:last-child { font-size: .86rem; } .public-shops-refresh { margin: 0; padding: 10px 13px; font-size: .75rem; } .public-shops-tools { flex-direction: column; gap: 10px; } .public-shops-search { padding: 14px; } .public-shops-search input { font-size: .78rem; } .public-shops-filter { min-width: 0; } .public-shops-filter select { padding: 12px 14px; } .public-shops-grid { grid-template-columns: 1fr; gap: 21px; } .public-shop-photo { height: 215px; } .public-shop-body { padding: 21px; } .public-shops-results { font-size: .74rem; margin-bottom: 19px; } .public-shops-error { align-items: flex-start; flex-direction: column; padding: 16px; } .public-shop-card { scroll-margin-top: 100px; } }

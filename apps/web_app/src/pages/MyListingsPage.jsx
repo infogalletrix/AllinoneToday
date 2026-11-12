@@ -3,18 +3,21 @@ import { Link } from "react-router-dom";
 import { request } from "../api/client";
 import { useAccount } from "../AccountContext";
 import ListingCard from "../components/common/ListingCard";
+import { isSupportedListing } from '../listingScope';
+import { useDialogs } from '../components/common/DialogProvider';
 export default function MyListingsPage() {
+  const { confirm } = useDialogs();
   const { user } = useAccount(),
     [items, setItems] = useState([]),
     [error, setError] = useState("");
   async function refresh() {
-    setItems(await request("/seller/catalogue"));
+    setItems((await request("/seller/catalogue")).filter(isSupportedListing));
   }
   useEffect(() => {
     if (user) refresh().catch((e) => setError(e.message));
   }, [user]);
   async function remove(id) {
-    if (!window.confirm("Remove this listing from the marketplace?")) return;
+    if (!await confirm({ title: 'Remove this listing?', message: 'This listing will be removed from the marketplace.', confirmLabel: 'Remove listing', tone: 'danger' })) return;
     try {
       await request("/listings/" + id, { method: "DELETE" });
       await refresh();

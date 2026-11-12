@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS accounts (
  id uuid PRIMARY KEY, name text NOT NULL, email text UNIQUE NOT NULL, phone text NOT NULL DEFAULT '',
- password_hash text NOT NULL, role text NOT NULL CHECK(role IN ('buyer','merchant','admin')),
+ password_hash text NOT NULL, role text NOT NULL CHECK(role IN ('buyer','merchant','admin','support')),
  created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE IF NOT EXISTS sessions (
@@ -66,6 +66,11 @@ CREATE TABLE IF NOT EXISTS blocks (
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS suspended boolean NOT NULL DEFAULT false;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS google_sub text UNIQUE;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS password_set boolean NOT NULL DEFAULT true;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS user_id text;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS must_change_password boolean NOT NULL DEFAULT false;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS owner_temporary_password text;
+CREATE UNIQUE INDEX IF NOT EXISTS account_user_id_unique ON accounts(lower(user_id)) WHERE user_id IS NOT NULL;
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS provisioned_by uuid REFERENCES accounts(id);
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS auth_method text NOT NULL DEFAULT 'password';
 CREATE TABLE IF NOT EXISTS marketplace_categories (
  id text PRIMARY KEY, name text UNIQUE NOT NULL, slug text UNIQUE NOT NULL,
@@ -92,3 +97,68 @@ CREATE TABLE IF NOT EXISTS shop_assessments (
  suggestion jsonb, approved_amount_minor integer, reason text NOT NULL DEFAULT '',
  revision integer NOT NULL DEFAULT 1, updated_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE accounts DROP CONSTRAINT IF EXISTS accounts_role_check;
+ALTER TABLE accounts ADD CONSTRAINT accounts_role_check CHECK(role IN ('buyer','merchant','admin','support'));
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS owner_name text NOT NULL DEFAULT '';
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS shop_type text NOT NULL DEFAULT 'Retail / General Store';
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS branch_details jsonb NOT NULL DEFAULT '[]';
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS gallery jsonb NOT NULL DEFAULT '[]';
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS branch_id uuid;
+CREATE TABLE IF NOT EXISTS notifications (
+ id uuid PRIMARY KEY, account_id uuid NOT NULL REFERENCES accounts(id),
+ inquiry_id uuid REFERENCES inquiries(id) ON DELETE CASCADE,
+ title text NOT NULL, body text NOT NULL, read_at timestamptz,
+ created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS notification_account_date ON notifications(account_id,created_at DESC);
+CREATE TABLE IF NOT EXISTS email_outbox (
+ id uuid PRIMARY KEY, account_id uuid NOT NULL REFERENCES accounts(id),
+ template text NOT NULL CHECK(template IN ('welcome','enquiry','reply')),
+ dedupe_key text NOT NULL UNIQUE,
+ status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','sending','sent','failed')),
+ attempts integer NOT NULL DEFAULT 0, next_attempt_at timestamptz NOT NULL DEFAULT now(),
+ locked_at timestamptz, sent_at timestamptz, last_error_code text,
+ created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS email_outbox_pending ON email_outbox(status,next_attempt_at);
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'product';
+ALTER TABLE marketplace_categories ADD COLUMN IF NOT EXISTS module text NOT NULL DEFAULT 'product';
+UPDATE marketplace_categories SET module='job' WHERE slug='jobs' AND module='product';
+UPDATE marketplace_categories SET module='service' WHERE slug='services' AND module='product';
+UPDATE listings SET kind='job' WHERE category='Jobs' AND kind='product';
+UPDATE listings SET kind='service' WHERE category='Services' AND kind='product';
+CREATE TABLE IF NOT EXISTS activity_events (
+ id uuid PRIMARY KEY, actor_id uuid REFERENCES accounts(id), action text NOT NULL,
+ route text NOT NULL, status integer NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS support_tickets (
+ id uuid PRIMARY KEY, account_id uuid NOT NULL REFERENCES accounts(id),
+ assigned_support_id uuid NOT NULL REFERENCES accounts(id), subject text NOT NULL,
+ status text NOT NULL DEFAULT 'open' CHECK(status IN ('open','resolved')),
+ created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS support_messages (
+ id uuid PRIMARY KEY, ticket_id uuid NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
+ sender_id uuid NOT NULL REFERENCES accounts(id), content text NOT NULL,
+ created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS password_resets (
+ token_hash text PRIMARY KEY, account_id uuid NOT NULL UNIQUE REFERENCES accounts(id),
+ expires_at timestamptz NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), attempts integer NOT NULL DEFAULT 0
+);
+ALTER TABLE password_resets ADD COLUMN IF NOT EXISTS attempts integer NOT NULL DEFAULT 0;
+ALTER TABLE email_outbox DROP CONSTRAINT IF EXISTS email_outbox_template_check;
+ALTER TABLE email_outbox ADD CONSTRAINT email_outbox_template_check CHECK(template IN ('welcome','enquiry','reply','storage_alert','support_alert','password_changed'));
+
+-- Account and conversation reports retain their original context for moderation.
+ALTER TABLE reports ALTER COLUMN listing_id DROP NOT NULL;
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS target_account_id uuid REFERENCES accounts(id);
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS inquiry_id uuid REFERENCES inquiries(id);
+DO $$ BEGIN
+ IF NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conname='reports_context_check' AND conrelid='reports'::regclass) THEN
+  ALTER TABLE reports ADD CONSTRAINT reports_context_check CHECK (
+   (listing_id IS NOT NULL AND inquiry_id IS NULL) OR
+   (listing_id IS NULL AND inquiry_id IS NOT NULL AND target_account_id IS NOT NULL)
+  );
+ END IF;
+END $$;
