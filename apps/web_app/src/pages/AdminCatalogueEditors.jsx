@@ -73,16 +73,16 @@ export function ShopEditor({value,categories,busy,onSave,onCancel,onDelete,onCre
       <Photo path={form.image_path} label="Shop image" onRemove={()=>setForm(previous=>({...previous,image_path:''}))}/>
       <div className="ait-form-grid"><label>Location<input maxLength={180} placeholder="City or area" {...field('location')}/></label><label>Phone<input type="tel" maxLength={30} placeholder="Shop contact number" {...field('phone')}/></label></div>
       <label>Branches<input type="number" step="any" inputMode="numeric" {...field('branches')}/><small>One branch is included by default.</small></label>
-      <label>Monthly AutoPay subscription fee (₹ / month)<input type="number" min="0" max="100000" step="1" placeholder="e.g. 499 (leave empty or 0 for free)" value={form.subscription_amount} onChange={event=>setForm(previous=>({...previous,subscription_amount:event.target.value}))}/><small>The shop owner will pay this exact monthly amount and set up AutoPay via Razorpay before their shop is published. Leave empty or 0 for free admin-managed access.</small></label>
+      <label>Monthly AutoPay subscription fee (₹ / month)<input type="number" min="0" max="100000" step="1" placeholder="e.g. 499 (leave empty or 0 for free)" value={form.subscription_amount} onChange={event=>setForm(previous=>({...previous,subscription_amount:event.target.value}))}/><small>Enter the agreed monthly subscription fee. When you save, Razorpay AutoPay setup opens immediately so you can set up the mandate with the shop owner on the spot. Leave empty or 0 for free access.</small></label>
     </fieldset>
     {uploading&&<p role="status">Uploading image…</p>}{error&&<p role="alert" className="ait-error">{error}</p>}
     <div className={'admin-editor-actions'+(categoryEditing?' is-category-editing':'')}><div className="ait-actions">
-      <button type="submit" value={value.id?form.status:'active'} className="btn-primary" disabled={saveDisabled}>{busy?'Saving…':value.id?'Save changes':'Save and publish shop'}</button>
+      <button type="submit" value={value.id?form.status:'active'} className="btn-primary" disabled={saveDisabled}>{busy?'Saving…':value.id?'Save changes':form.subscription_amount&&Number(form.subscription_amount)>0?'Save & Set up AutoPay':'Save and publish shop'}</button>
       {value.id&&!savedActive?<button type="submit" value="active" className="btn-secondary" disabled={saveDisabled}>Publish shop</button>:<button type="submit" value="inactive" className="btn-secondary" disabled={saveDisabled}>Save draft</button>}
       <button type="button" className="btn-secondary admin-editor-cancel" disabled={saveDisabled} onClick={onCancel}>Cancel</button>
       {value.id&&onCredentials&&<button type="button" data-preserve-draft="true" className="btn-secondary" disabled={saveDisabled} onClick={onCredentials}>Owner login details</button>}
       {value.id&&onDelete&&<button type="button" data-preserve-draft="true" className="btn-secondary admin-delete-button" disabled={saveDisabled} onClick={onDelete}>Delete shop</button>}
-    </div><small>{value.id?'Save changes keeps the current visibility. Publishing is confirmed after saving.':'Save and publish shop adds it to the public directory once confirmed. Save draft keeps it private.'}</small></div>
+    </div><small>{value.id?'Save changes keeps the current visibility.':form.subscription_amount&&Number(form.subscription_amount)>0?'Saving opens Razorpay AutoPay mandate setup immediately so you can set it up on the spot with the merchant.':'Save and publish shop adds it to the public directory once confirmed. Save draft keeps it private.'}</small></div>
   </form>;
 }
 

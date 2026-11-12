@@ -63,9 +63,89 @@ export async function createCheckout(pool, account, shopId, acceptedAmountMinor)
     throw error;
   } finally { client.release(); }
 }
-function checkoutResult(subscription, shop, account) {
+
+export async function adminCreateCheckout(pool, adminAccount, shopId) {
+  if (!billingEnabled()) throw Object.assign(new Error('Shop subscriptions are not open yet. Please contact All in One Today support.'), { status: 503 });
+  const client = await pool.connect();
+  let sent = false;
+  let requestId;
+  try {
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [shopId]);
+    const shop = (await client.query("SELECT * FROM shops WHERE id=$1 AND status<>'deleted' FOR UPDATE", [shopId])).rows[0];
+    if (!shop) throw Object.assign(new Error('Shop not found.'), { status: 404 });
+    if (!shop.subscription_amount_minor || shop.subscription_amount_minor < 100) {
+      throw Object.assign(new Error('This shop does not have a valid monthly subscription amount (minimum ₹1).'), { status: 400 });
+    }
+    await requireAvailableCategory(client, shop.category, 409);
+    const ownerAccount = (await client.query('SELECT * FROM accounts WHERE id=$1', [shop.owner_id])).rows[0];
+    const previous = (await client.query("SELECT * FROM subscriptions WHERE shop_id=$1 AND status NOT IN ('cancelled','completed','expired','failed') ORDER BY created_at DESC LIMIT 1", [shopId])).rows[0];
+    if (previous) {
+      if (previous.amount_minor === shop.subscription_amount_minor && previous.provider_id) {
+        await client.query('COMMIT');
+        return checkoutResult(previous, shop, adminAccount, ownerAccount);
+      }
+    }
+    const amountMinor = shop.subscription_amount_minor;
+    const period = 'month';
+    const priceKey = `custom:month:${amountMinor}`;
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`plan:${priceKey}`]);
+    let plan = (await client.query('SELECT provider_plan_id FROM billing_plans WHERE price_key=$1', [priceKey])).rows[0]?.provider_plan_id;
+    if (!plan) {
+      const created = await provider('plans', {
+        period: 'monthly',
+        interval: 1,
+        item: {
+          name: 'All in One Today shop subscription',
+          amount: amountMinor,
+          currency: 'INR',
+          description: `${shop.name} monthly subscription`
+        }
+      });
+      plan = created.id;
+      await client.query('INSERT INTO billing_plans VALUES ($1,$2)', [priceKey, plan]);
+    }
+    requestId = randomUUID();
+    const quoteData = { amountMinor, period, version: 1 };
+    await client.query('INSERT INTO subscriptions(id,shop_id,account_id,amount_minor,period,quote) VALUES($1,$2,$3,$4,$5,$6)', [requestId, shopId, shop.owner_id, amountMinor, period, quoteData]);
+    await client.query('COMMIT');
+    sent = true;
+    const created = await provider('subscriptions', {
+      plan_id: plan,
+      total_count: 120,
+      quantity: 1,
+      customer_notify: 1,
+      notes: { marketplace: 'allinonetoday', shop_id: shopId, request_id: requestId, admin_initiated: 'true' }
+    });
+    const subscription = (await client.query("UPDATE subscriptions SET provider_id=$1,status='created' WHERE id=$2 RETURNING *", [created.id, requestId])).rows[0];
+    return checkoutResult(subscription, shop, adminAccount, ownerAccount);
+  } catch (error) {
+    if (!sent) await client.query('ROLLBACK').catch(() => {});
+    if (sent && requestId) await client.query("UPDATE subscriptions SET status='review_required' WHERE id=$1 AND provider_id IS NULL", [requestId]);
+    throw error;
+  } finally { client.release(); }
+}
+function checkoutResult(subscription, shop, account, ownerAccount) {
   const test = billingConfiguration().mode === 'test';
-  return { key: process.env.RAZORPAY_KEY_ID, subscriptionId: subscription.provider_id, requestId: subscription.id, amountMinor: subscription.amount_minor, currency: 'INR', period: subscription.period, status: subscription.status, paymentMode: test ? 'test' : 'live', name: test ? 'All in One Today TEST' : 'All in One Today', description: `${test ? 'TEST ONLY: ' : ''}${shop.name} shop subscription`, prefill: { name: account.name, email: account.email, contact: account.phone }, checkoutUrl: `${process.env.PUBLIC_URL || 'https://allinonetoday.com'}/merchant?checkout=${subscription.id}` };
+  const payer = ownerAccount || account;
+  return {
+    key: process.env.RAZORPAY_KEY_ID,
+    subscriptionId: subscription.provider_id,
+    requestId: subscription.id,
+    amountMinor: subscription.amount_minor,
+    currency: 'INR',
+    period: subscription.period,
+    status: subscription.status,
+    paymentMode: test ? 'test' : 'live',
+    name: test ? 'All in One Today TEST' : 'All in One Today',
+    description: `${test ? 'TEST ONLY: ' : ''}${shop.name} shop subscription`,
+    prefill: {
+      name: payer.name || shop.name,
+      email: payer.email,
+      contact: payer.phone || shop.phone
+    },
+    checkoutUrl: `${process.env.PUBLIC_URL || 'https://allinonetoday.com'}/merchant?checkout=${subscription.id}`
+  };
 }
 const unixTimestamp = value => Number.isSafeInteger(value) && value > 0;
 const terminalSubscriptionStates = ['cancelled','completed','expired'];
@@ -100,6 +180,47 @@ export async function verifyCheckout(pool, account, input) {
     await client.query('COMMIT');
   } catch(error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
   return { verified: true, message: 'Your shop subscription is active.' };
+}
+
+export async function adminVerifyCheckout(pool, adminAccount, shopId, input) {
+  requireBillingConfiguration();
+  const subscription = (await pool.query(
+    "SELECT b.*, s.name as shop_name FROM subscriptions b JOIN shops s ON s.id=b.shop_id WHERE b.id=$1 AND b.shop_id=$2 AND b.provider_id=$3 AND s.status<>'deleted'",
+    [input.requestId, shopId, input.subscriptionId]
+  )).rows[0];
+  if (!subscription || !matchesSignature(`${input.paymentId}|${subscription.provider_id}`, input.signature, process.env.RAZORPAY_KEY_SECRET)) {
+    throw Object.assign(new Error('Payment signature verification failed.'), { status: 400 });
+  }
+  const [remote, payment] = await Promise.all([
+    provider(`subscriptions/${subscription.provider_id}`),
+    provider(`payments/${input.paymentId}`)
+  ]);
+  let paid = payment.id === input.paymentId && capturedPayment(payment, subscription.amount_minor) && Boolean(payment.invoice_id);
+  let paidUntil;
+  if (paid) {
+    const invoice = await provider(`invoices/${payment.invoice_id}`);
+    if (invoice.subscription_id !== subscription.provider_id) throw Object.assign(new Error('Payment does not belong to this shop subscription.'), { status: 400 });
+    paid = invoice.payment_id === input.paymentId && invoice.status === 'paid' && invoice.currency === 'INR'
+      && Number.isSafeInteger(invoice.amount_paid) && invoice.amount_paid >= subscription.amount_minor
+      && unixTimestamp(invoice.billing_end) && unixTimestamp(remote.current_end);
+    if (paid) paidUntil = Math.min(invoice.billing_end, remote.current_end);
+  }
+  if (!paid || !['active','authenticated'].includes(remote.status) || (paidUntil && paidUntil*1000<=Date.now())) {
+    return { verified: false, message: 'Payment is awaiting provider confirmation. Refresh status shortly.' };
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query("UPDATE subscriptions SET status=CASE WHEN status IN ('cancelled','completed','expired') THEN status ELSE 'active' END,payment_id=$1,paid_until=GREATEST(paid_until,to_timestamp($2)) WHERE id=$3", [input.paymentId, paidUntil, subscription.id]);
+    await client.query("UPDATE shops SET status='active', moderated_hidden=false WHERE id=$1 AND status<>'deleted'", [shopId]);
+    await client.query('COMMIT');
+  } catch(error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+  return { verified: true, message: 'Shop AutoPay subscription is active and the shop is published.' };
 }
 export async function handleWebhook(pool, raw, signature, eventId) {
   requireBillingConfiguration();

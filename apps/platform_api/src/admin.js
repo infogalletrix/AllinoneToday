@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { categorySchema, siteSchema } from './content.js';
 import { readPricing, setPricing } from './pricing.js';
-import { billingEnabled, cancelSubscription } from './billing.js';
+import { billingEnabled, cancelSubscription, adminCreateCheckout, adminVerifyCheckout } from './billing.js';
 import { hashPassword, newToken } from './security.js';
 import { aiConfigured, suggestPrice } from './assessments.js';
 import { isOperator } from './roles.js';
@@ -103,7 +103,25 @@ export function adminRouter(pool) {
     }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
     ok(res,{id:targetId},'Account deleted successfully.');
   });
-  router.get('/shops',async(req,res)=>ok(res,(await pool.query("SELECT s.*,a.name AS owner_name,a.email AS owner_email,a.user_id AS owner_user_id,a.must_change_password AS owner_password_pending FROM shops s JOIN accounts a ON a.id=s.owner_id WHERE NOT a.email LIKE 'deleted-%@invalid.example' AND s.status<>'deleted' ORDER BY s.created_at DESC LIMIT 100 OFFSET $1",[offset(req)])).rows));
+  router.get('/shops',async(req,res)=>ok(res,(await pool.query("SELECT s.*,a.name AS owner_name,a.email AS owner_email,a.user_id AS owner_user_id,a.must_change_password AS owner_password_pending,sub.status AS subscription_status,sub.paid_until AS subscription_paid_until FROM shops s JOIN accounts a ON a.id=s.owner_id LEFT JOIN LATERAL (SELECT status, paid_until FROM subscriptions WHERE shop_id = s.id ORDER BY created_at DESC LIMIT 1) sub ON true WHERE NOT a.email LIKE 'deleted-%@invalid.example' AND s.status<>'deleted' ORDER BY s.created_at DESC LIMIT 100 OFFSET $1",[offset(req)])).rows));
+  router.post('/shops/:id/checkout',async(req,res)=>{
+    const shopId=z.string().uuid().parse(req.params.id);
+    const checkout=await adminCreateCheckout(pool,req.account,shopId);
+    await audit(req,'shop.autopay_checkout',shopId);
+    ok(res,checkout);
+  });
+  router.post('/shops/:id/verify',async(req,res)=>{
+    const shopId=z.string().uuid().parse(req.params.id);
+    const input=z.object({
+      requestId:z.string().uuid(),
+      paymentId:z.string().min(1).max(100),
+      subscriptionId:z.string().min(1).max(100),
+      signature:z.string().length(64)
+    }).parse(req.body);
+    const result=await adminVerifyCheckout(pool,req.account,shopId,input);
+    if(result.verified) await audit(req,'shop.autopay_verified',shopId);
+    ok(res,result);
+  });
   router.patch('/shops/:id',async(req,res)=>{
     const p=z.object({status:z.enum(['active','inactive'])}).parse(req.body),id=z.string().uuid().parse(req.params.id);
     const managed=(await pool.query('SELECT owner_id,admin_managed,provisioned_by FROM shops WHERE id=$1',[id])).rows[0];

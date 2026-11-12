@@ -61,6 +61,21 @@ function FamilyReview({kind,item,busy,onSave}){
   </div>;
 }
 
+let checkoutSdk;
+function loadRazorpay() {
+  if (window.Razorpay) return Promise.resolve();
+  if (!checkoutSdk) {
+    checkoutSdk = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("Could not load secure checkout. Check your connection and try again."));
+      document.head.appendChild(script);
+    });
+  }
+  return checkoutSdk;
+}
+
 export default function ProductOwnerPage(){
   const {user,loading,logout}=useAccount(),siteContext=useSite();
   const {confirm,prompt}=useDialogs(),navigate=useNavigate();
@@ -163,6 +178,59 @@ export default function ProductOwnerPage(){
       return result??true;
     }
     catch(error){setError(error.message);return null;}finally{mutationLock.current=false;setBusy(false);}
+  }
+  async function triggerAdminAutoPay(shop){
+    if(!shop||!shop.id)return;
+    try{
+      setBusy(true);setError('');
+      setMessage(`Opening Razorpay AutoPay mandate setup for "${shop.name}" (${currency(shop.subscription_amount_minor)}/month)…`);
+      await loadRazorpay();
+      const details=await request(`/admin/shops/${shop.id}/checkout`,{method:'POST'});
+      let receivedPayment=false;
+      const release=()=>{setBusy(false);};
+      const razorpay=new window.Razorpay({
+        key:details.key,
+        subscription_id:details.subscriptionId,
+        name:details.name,
+        description:details.description,
+        prefill:details.prefill,
+        theme:{color:"#F95738"},
+        retry:{enabled:false},
+        handler:async(response)=>{
+          receivedPayment=true;
+          setMessage("AutoPay mandate authorized! Activating subscription…");
+          try{
+            const verified=await request(`/admin/shops/${shop.id}/verify`,{
+              method:'POST',
+              body:JSON.stringify({
+                requestId:details.requestId,
+                paymentId:response.razorpay_payment_id,
+                subscriptionId:response.razorpay_subscription_id,
+                signature:response.razorpay_signature
+              })
+            });
+            setMessage(verified.message||`AutoPay activated! "${shop.name}" is now live and published.`);
+            await Promise.all([load(),checkPublicShops()]);
+          }catch(err){setError(err.message);}
+          finally{release();}
+        },
+        modal:{
+          ondismiss:()=>{
+            if(!receivedPayment){
+              release();
+              setMessage(`AutoPay checkout closed. You can click 'Set up AutoPay' on "${shop.name}" at any time.`);
+            }
+          }
+        }
+      });
+      razorpay.on('payment.failed',(response)=>{
+        setError(response.error?.description||'AutoPay authorization failed. Please try again.');
+        try{razorpay.close();}finally{release();}
+      });
+      razorpay.open();
+    }catch(err){
+      setError(err.message);setBusy(false);
+    }
   }
   async function saveListing(value,options={}){
     const id=editListing?.id;
@@ -278,7 +346,17 @@ export default function ProductOwnerPage(){
         {tab==='Shops'&&<>
           <div className="admin-section-actions"><p>Set up a storefront, give its owner access and choose when it goes public.</p><div><Link className="btn-secondary" to="/shops">View public shops<ArrowUpRight size={15}/></Link>{!editShop&&<button className="btn-primary" disabled={busy} onClick={()=>openEditor('Shops')}><Plus size={16}/>Add shop</button>}</div></div>
           {!editShop&&<>{data.some(shop=>!managed(shop,'owner_id'))&&<label className="shop-scope">Show<select aria-label="Shop list" value={shopScope} onChange={event=>setShopScope(event.target.value)}><option value="owned">Admin-created shops</option><option value="all">All marketplace shops</option></select></label>}{(publicShops.loading||publicShops.error)&&<div className="admin-public-check"><CheckCircle2 size={16}/><span>{publicShops.loading?'Checking what visitors can see…':'Public visibility could not be checked.'}</span>{publicShops.error&&<button disabled={busy} type="button" onClick={checkPublicShops}>Check public visibility</button>}</div>}</>}
-          {editShop?<ShopEditor key={editShop.id||'new'} value={editShop} categories={siteContext.site.categories} busy={busy} onCancel={cancelEditor} onDelete={editShop.id?()=>deleteCatalogueItem('shops',editShop):undefined} onCredentials={editShop.owner_user_id&&editShop.owner_id!==user.id?()=>showOwnerCredentials(editShop):undefined} onSave={async value=>{if(await mutate('/catalogue/shops'+(editShop.id?'/'+editShop.id:''),value,editShop.id?'PATCH':'POST'))setEditShop(null);}}/>:<div className="admin-record-list">{rows.map(shop=><div className="admin-record" key={shop.id}><article className="ait-admin-row"><div className="admin-record-primary">{thumbnail(shop,Store)}<div className="admin-record-copy"><h3>{shop.name}</h3><p>{shop.category}{shop.location?' · '+shop.location:''}</p>{shop.subscription_amount_minor ? <p className="admin-record-price">AutoPay: {currency(shop.subscription_amount_minor)} / month</p> : null}<p className="admin-record-description">{shop.description||'No description added.'}</p>{shop.owner_id!==user.id&&<p className="admin-owner-label"><strong>{shop.owner_name||"Shop owner"}</strong>{shop.owner_email&&<> &middot; {shop.owner_email}</>}{shop.owner_user_id&&<> &middot; <code>{shop.owner_user_id}</code></>}{shop.owner_password_pending&&<> &middot; <span>First login pending</span></>}</p>}<ShopPublicStatus shop={shop} state={publicShops} categories={siteContext.site.categories}/></div></div><div className="ait-actions">{shop.owner_user_id&&shop.owner_id!==user.id&&<button type="button" disabled={busy} className="btn-secondary" onClick={()=>showOwnerCredentials(shop)}><KeyRound size={14} aria-hidden="true"/>Owner login details</button>}{managed(shop,'owner_id')&&<><button disabled={busy} className="btn-secondary" onClick={()=>openEditor('Shops',shop)}>Edit shop</button><button disabled={busy} className="btn-secondary" onClick={()=>addProductToShop(shop)}>Add product</button></>}<button disabled={busy} className="btn-secondary" onClick={async()=>{const active=shop.status==='active'&&!shop.moderated_hidden;if(active&&!await confirm({title:'Hide this shop?',message:'This shop and its linked listings will be hidden from public browsing.',confirmLabel:'Hide shop',tone:'danger'}))return;mutate('/shops/'+shop.id,{status:active?'inactive':'active'},'PATCH');}}>{shop.status==='active'&&!shop.moderated_hidden?'Hide shop':shop.admin_managed?'Publish shop':'Publish paid shop'}</button><button type="button" disabled={busy||fetching} className="btn-secondary admin-delete-button" onClick={()=>deleteCatalogueItem('shops',shop)}><Trash2 size={14} aria-hidden="true"/>Delete shop</button>{!publicShops.loading&&!publicShops.error&&publicShops.items.some(item=>item.id===shop.id)&&<Link className="ait-link" to={publicShopHref(shop.id)}>View public shop<ArrowUpRight size={15}/></Link>}</div></article>{family('shops',shop)}</div>)}</div>}
+          {editShop?<ShopEditor key={editShop.id||'new'} value={editShop} categories={siteContext.site.categories} busy={busy} onCancel={cancelEditor} onDelete={editShop.id?()=>deleteCatalogueItem('shops',editShop):undefined} onCredentials={editShop.owner_user_id&&editShop.owner_id!==user.id?()=>showOwnerCredentials(editShop):undefined} onSave={async value=>{
+            const result=await mutate('/catalogue/shops'+(editShop.id?'/'+editShop.id:''),value,editShop.id?'PATCH':'POST');
+            if(result){
+              setEditShop(null);
+              const savedShop=result.id?result:{...editShop,...value,id:editShop.id};
+              const subAmount=savedShop.subscription_amount_minor||(value.subscription_amount?Math.round(Number(value.subscription_amount)*100):0);
+              if(subAmount>0){
+                triggerAdminAutoPay({...savedShop,subscription_amount_minor:subAmount});
+              }
+            }
+          }}/>:<div className="admin-record-list">{rows.map(shop=><div className="admin-record" key={shop.id}><article className="ait-admin-row"><div className="admin-record-primary">{thumbnail(shop,Store)}<div className="admin-record-copy"><h3>{shop.name}</h3><p>{shop.category}{shop.location?' · '+shop.location:''}</p>{shop.subscription_amount_minor ? <p className="admin-record-price">AutoPay: {currency(shop.subscription_amount_minor)} / month{shop.subscription_status==='active'&&new Date(shop.subscription_paid_until)>new Date()?<span style={{color:'#10b981',marginLeft:8,fontWeight:600}}>● Active</span>:<span style={{color:'#f95738',marginLeft:8,fontWeight:600}}>● Mandate Pending</span>}</p> : null}<p className="admin-record-description">{shop.description||'No description added.'}</p>{shop.owner_id!==user.id&&<p className="admin-owner-label"><strong>{shop.owner_name||"Shop owner"}</strong>{shop.owner_email&&<> &middot; {shop.owner_email}</>}{shop.owner_user_id&&<> &middot; <code>{shop.owner_user_id}</code></>}{shop.owner_password_pending&&<> &middot; <span>First login pending</span></>}</p>}<ShopPublicStatus shop={shop} state={publicShops} categories={siteContext.site.categories}/></div></div><div className="ait-actions">{shop.subscription_amount_minor>0&&!(shop.subscription_status==='active'&&new Date(shop.subscription_paid_until)>new Date())&&<button type="button" className="btn-primary" style={{background:'#f95738',color:'#fff',fontWeight:600}} disabled={busy} onClick={()=>triggerAdminAutoPay(shop)} title="Set up recurring AutoPay mandate with Razorpay">Set up AutoPay ({currency(shop.subscription_amount_minor)}/mo)</button>}{shop.subscription_amount_minor>0&&shop.subscription_status==='active'&&new Date(shop.subscription_paid_until)>new Date()&&<span className="badge-verified" style={{padding:'6px 12px',fontSize:'0.85rem'}}><CheckCircle2 size={14}/> AutoPay Active · Paid through {new Date(shop.subscription_paid_until).toLocaleDateString()}</span>}{shop.owner_user_id&&shop.owner_id!==user.id&&<button type="button" disabled={busy} className="btn-secondary" onClick={()=>showOwnerCredentials(shop)}><KeyRound size={14} aria-hidden="true"/>Owner login details</button>}{managed(shop,'owner_id')&&<><button disabled={busy} className="btn-secondary" onClick={()=>openEditor('Shops',shop)}>Edit shop</button><button disabled={busy} className="btn-secondary" onClick={()=>addProductToShop(shop)}>Add product</button></>}<button disabled={busy} className="btn-secondary" onClick={async()=>{const active=shop.status==='active'&&!shop.moderated_hidden;if(active&&!await confirm({title:'Hide this shop?',message:'This shop and its linked listings will be hidden from public browsing.',confirmLabel:'Hide shop',tone:'danger'}))return;mutate('/shops/'+shop.id,{status:active?'inactive':'active'},'PATCH');}}>{shop.status==='active'&&!shop.moderated_hidden?'Hide shop':shop.admin_managed?'Publish shop':'Publish paid shop'}</button><button type="button" disabled={busy||fetching} className="btn-secondary admin-delete-button" onClick={()=>deleteCatalogueItem('shops',shop)}><Trash2 size={14} aria-hidden="true"/>Delete shop</button>{!publicShops.loading&&!publicShops.error&&publicShops.items.some(item=>item.id===shop.id)&&<Link className="ait-link" to={publicShopHref(shop.id)}>View public shop<ArrowUpRight size={15}/></Link>}</div></article>{family('shops',shop)}</div>)}</div>}
         </>}
         {tab==='Listings'&&<>
           <div className="admin-section-actions"><p>Manage products and services with photos, pricing and specifications.</p><div><Link className="btn-secondary" to="/listings">View public listings<ArrowUpRight size={15}/></Link><button className="btn-primary" disabled={busy} onClick={()=>openEditor('Listings')}><Plus size={16}/>Add product or service</button></div></div>
