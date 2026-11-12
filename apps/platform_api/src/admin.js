@@ -3,7 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { categorySchema, siteSchema } from './content.js';
 import { readPricing, setPricing } from './pricing.js';
-import { billingEnabled } from './billing.js';
+import { billingEnabled, cancelSubscription } from './billing.js';
+import { hashPassword, newToken } from './security.js';
 import { aiConfigured, suggestPrice } from './assessments.js';
 import { isOperator } from './roles.js';
 import {smtpConfiguration} from './email.js';
@@ -68,6 +69,39 @@ export function adminRouter(pool) {
     const row=(await pool.query("UPDATE accounts SET suspended=$1 WHERE id=$2 AND role NOT IN ('admin','support') RETURNING id,suspended",[p.suspended,z.string().uuid().parse(req.params.id)])).rows[0];
     if(!row)throw Object.assign(new Error('Account not found or protected owner account.'),{status:404});
     if(p.suspended)await pool.query('DELETE FROM sessions WHERE account_id=$1',[req.params.id]);await audit(req,'account.suspension',req.params.id);ok(res,row);
+  });
+  router.delete('/accounts/:id',async(req,res)=>{
+    const targetId=z.string().uuid().parse(req.params.id);
+    if(targetId===req.account.id)throw Object.assign(new Error('You cannot delete your own administrator account.'),{status:400});
+    const target=(await pool.query("SELECT * FROM accounts WHERE id=$1 AND role NOT IN ('admin','support') AND NOT email LIKE 'deleted-%@invalid.example'",[targetId])).rows[0];
+    if(!target)throw Object.assign(new Error('Account not found or protected account.'),{status:404});
+    const mandates=(await pool.query("SELECT * FROM subscriptions WHERE account_id=$1 AND provider_id IS NOT NULL AND status NOT IN ('cancelled','completed','expired','failed')",[targetId])).rows;
+    for(const mandate of mandates){
+      await cancelSubscription(pool,target,mandate.id,true).catch(()=>{});
+    }
+    const client=await pool.connect();
+    try{
+      await client.query('BEGIN');
+      const replacementEmail=`deleted-${targetId}@invalid.example`;
+      await client.query("UPDATE accounts SET name='Deleted user',email=$1,phone='',password_hash=$2,password_set=false,owner_temporary_password=NULL,google_sub=NULL,suspended=true WHERE id=$3",[replacementEmail,await hashPassword(newToken()),targetId]);
+      await client.query('DELETE FROM sessions WHERE account_id=$1',[targetId]);
+      await client.query('DELETE FROM web_handoffs WHERE account_id=$1',[targetId]);
+      await client.query('DELETE FROM email_outbox WHERE account_id=$1',[targetId]);
+      await client.query('DELETE FROM password_resets WHERE account_id=$1',[targetId]);
+      await client.query("UPDATE support_messages SET content='Removed by sender' WHERE sender_id=$1",[targetId]);
+      await client.query("UPDATE support_tickets SET subject='Deleted account request',status='resolved' WHERE account_id=$1",[targetId]);
+      await client.query("UPDATE shops SET status=CASE WHEN status='deleted' THEN status ELSE 'inactive' END,moderated_hidden=true,name='Removed shop',owner_name='',branch_details='[]',phone='',location='',description='',image_path='' WHERE owner_id=$1",[targetId]);
+      await client.query("UPDATE listings SET status=CASE WHEN status='deleted' THEN status ELSE 'removed' END,title='Removed listing',description='',location='',image_path='',gallery='[]',branch_id=NULL,subcategory='',price=0,formatted_price='',specifications='{}' WHERE seller_id=$1",[targetId]);
+      await client.query("UPDATE inquiries SET sender_name='Deleted user',phone='',message='Removed by sender',preferred_date='' WHERE sender_id=$1",[targetId]);
+      await client.query("UPDATE messages SET content='Removed by sender' WHERE sender_id=$1",[targetId]);
+      await client.query('DELETE FROM favorites WHERE account_id=$1',[targetId]);
+      await client.query('DELETE FROM blocks WHERE account_id=$1 OR blocked_id=$1',[targetId]);
+      await client.query('DELETE FROM notifications WHERE account_id=$1',[targetId]);
+      await client.query('DELETE FROM uploads WHERE account_id=$1',[targetId]);
+      await audit(req,'account.deletion',targetId);
+      await client.query('COMMIT');
+    }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
+    ok(res,{id:targetId},'Account deleted successfully.');
   });
   router.get('/shops',async(req,res)=>ok(res,(await pool.query("SELECT s.*,a.name AS owner_name,a.email AS owner_email,a.user_id AS owner_user_id,a.must_change_password AS owner_password_pending FROM shops s JOIN accounts a ON a.id=s.owner_id WHERE NOT a.email LIKE 'deleted-%@invalid.example' AND s.status<>'deleted' ORDER BY s.created_at DESC LIMIT 100 OFFSET $1",[offset(req)])).rows));
   router.patch('/shops/:id',async(req,res)=>{
