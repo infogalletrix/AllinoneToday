@@ -25,7 +25,7 @@ function familyTargetSql(type, parameter) {
 // Ignore joined admin presentation fields. The shops admin list replaces the
 // private owner_name with the account name; neither is exposed to family mode.
 export function familyReviewVersion(row) {
-  const derived = ['family_safe', 'family_review_version', 'seller_name', 'owner_name', 'owner_email', 'owner_user_id', 'owner_password_pending', 'listings_count'];
+  const derived = ['family_safe', 'family_review_version', 'seller_name', 'owner_name', 'owner_email', 'owner_user_id', 'owner_password_pending', 'listings_count', 'subscription_status', 'subscription_paid_until'];
   const content = Object.fromEntries(Object.keys(row).sort().filter(key => !derived.includes(key)).map(key => [key, row[key]]));
   return createHash('sha256').update(JSON.stringify(content)).digest('hex');
 }

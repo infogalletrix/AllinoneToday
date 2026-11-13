@@ -101,22 +101,35 @@ export function adminCatalogueRouter(pool){
     const row=(await client.query(`SELECT * FROM ${table} WHERE id=$1 FOR UPDATE`,[id])).rows[0];
     if(!row||row.status==='deleted')throw catalogueError(404,'Catalogue item not found.');
     const owner=table==='shops'?row.owner_id:row.seller_id;
-    if(row.admin_managed){
-      const provisioned=table==='shops'?row.provisioned_by===req.catalogueAdmin.id:row.shop_id&&Boolean((await client.query('SELECT 1 FROM shops WHERE id=$1 AND owner_id=$2 AND provisioned_by=$3 AND admin_managed=true',[row.shop_id,owner,req.catalogueAdmin.id])).rowCount);
-      if(owner!==req.catalogueAdmin.id&&!provisioned)throw catalogueError(403,'This item is not in your administrator-managed catalogue.');
+    if(row.admin_managed && req.account?.role !== 'admin'){
+      const provisioned=table==='shops'?row.provisioned_by===req.catalogueAdmin?.id:row.shop_id&&Boolean((await client.query('SELECT 1 FROM shops WHERE id=$1 AND owner_id=$2 AND provisioned_by=$3 AND admin_managed=true',[row.shop_id,owner,req.catalogueAdmin?.id])).rowCount);
+      if(owner!==req.catalogueAdmin?.id&&!provisioned)throw catalogueError(403,'This item is not in your administrator-managed catalogue.');
     }
-    if(familyReviewVersion(row)!==version)throw catalogueError(409,'The catalogue item changed. Refresh the records before deleting.');
+    if(version && familyReviewVersion(row)!==version)throw catalogueError(409,'The catalogue item changed. Refresh the records before deleting.');
     return row;
   }
-  const deleteInput=z.object({contentVersion}).strict();
+  const deleteInput=z.object({contentVersion:contentVersion.optional().or(z.literal(''))});
   router.delete('/shops/:id',async(req,res)=>{
     const id=z.string().uuid().parse(req.params.id),input=deleteInput.parse(req.body);
     const result=await transaction(req,'catalogue.shop.delete',async client=>{
       // Match checkout creation's lock so no new mandate can start during deletion.
       await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',[id]);
       await deletionTarget(client,'shops',id,req,input.contentVersion);
-      const mandate=await client.query("SELECT 1 FROM subscriptions WHERE shop_id=$1 AND (status NOT IN ('cancelled','completed','expired','failed') OR (status='failed' AND provider_id IS NOT NULL)) LIMIT 1",[id]);
-      if(mandate.rowCount)throw catalogueError(409,'Cancel the active or pending subscription before deleting this shop.');
+      const subs=(await client.query("SELECT provider_id FROM subscriptions WHERE shop_id=$1 AND provider_id IS NOT NULL AND status NOT IN ('cancelled','completed','expired')",[id])).rows;
+      for(const sub of subs){
+        try{
+          if(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET){
+            const auth=Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString('base64');
+            await fetch(`https://api.razorpay.com/v1/subscriptions/${sub.provider_id}/cancel`,{
+              method:'POST',
+              headers:{Authorization:`Basic ${auth}`,'Content-Type':'application/json'},
+              body:JSON.stringify({cancel_at_cycle_end:0}),
+              signal:AbortSignal.timeout(5000)
+            });
+          }
+        }catch(_){}
+      }
+      await client.query("UPDATE subscriptions SET status='cancelled' WHERE shop_id=$1 AND status NOT IN ('cancelled','completed','expired')",[id]);
       const products=await client.query("UPDATE listings SET status='deleted',family_safe=false WHERE shop_id=$1 AND status<>'deleted' RETURNING id",[id]);
       await client.query("UPDATE shops SET status='deleted',moderated_hidden=true,family_safe=false WHERE id=$1",[id]);
       return {id,deleted:true,deletedProducts:products.rowCount};

@@ -14,6 +14,7 @@ import {reportContext} from './reports.js';
 import {adminCatalogueRouter} from './admin-catalogue.js';
 import {requireCatalogueAdministrator} from './catalogue-policy.js';
 import {ownerLoginAdminRouter} from './owner-login-admin.js';
+import {familyReviewVersion} from './family-mode.js';
 
 export function adminRouter(pool) {
   const router=Router();
@@ -103,7 +104,10 @@ export function adminRouter(pool) {
     }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
     ok(res,{id:targetId},'Account deleted successfully.');
   });
-  router.get('/shops',async(req,res)=>ok(res,(await pool.query("SELECT s.*,a.name AS owner_name,a.email AS owner_email,a.user_id AS owner_user_id,a.must_change_password AS owner_password_pending,sub.status AS subscription_status,sub.paid_until AS subscription_paid_until FROM shops s JOIN accounts a ON a.id=s.owner_id LEFT JOIN LATERAL (SELECT status, paid_until FROM subscriptions WHERE shop_id = s.id ORDER BY created_at DESC LIMIT 1) sub ON true WHERE NOT a.email LIKE 'deleted-%@invalid.example' AND s.status<>'deleted' ORDER BY s.created_at DESC LIMIT 100 OFFSET $1",[offset(req)])).rows));
+  router.get('/shops',async(req,res)=>{
+    const rows=(await pool.query("SELECT s.*,a.name AS owner_name,a.email AS owner_email,a.user_id AS owner_user_id,a.must_change_password AS owner_password_pending,sub.status AS subscription_status,sub.paid_until AS subscription_paid_until FROM shops s JOIN accounts a ON a.id=s.owner_id LEFT JOIN LATERAL (SELECT status, paid_until FROM subscriptions WHERE shop_id = s.id ORDER BY created_at DESC LIMIT 1) sub ON true WHERE NOT a.email LIKE 'deleted-%@invalid.example' AND s.status<>'deleted' ORDER BY s.created_at DESC LIMIT 100 OFFSET $1",[offset(req)])).rows;
+    ok(res,rows.map(r=>({...r,family_review_version:familyReviewVersion(r)})));
+  });
   router.post('/shops/:id/checkout',async(req,res)=>{
     const shopId=z.string().uuid().parse(req.params.id);
     const checkout=await adminCreateCheckout(pool,req.account,shopId);
@@ -137,7 +141,10 @@ export function adminRouter(pool) {
     if(p.status==='active'&&!managed?.admin_managed&&!(await pool.query('SELECT 1 FROM subscriptions WHERE shop_id=$1 AND paid_until>now()',[id])).rowCount)throw Object.assign(new Error('Only a paid shop can be published. Payment access cannot be bypassed.'),{status:409});
     const row=(await pool.query("UPDATE shops SET status=$1,moderated_hidden=$2 WHERE id=$3 AND status<>'deleted' RETURNING id,status",[p.status,p.status==='inactive',id])).rows[0];if(!row)throw Object.assign(new Error('Shop not found.'),{status:404});await audit(req,'shop.visibility',id);ok(res,row);
   });
-  router.get('/listings',async(req,res)=>ok(res,(await pool.query("SELECT l.*,a.name AS seller_name FROM listings l JOIN accounts a ON a.id=l.seller_id WHERE NOT a.email LIKE 'deleted-%@invalid.example' AND l.status<>'deleted' AND (l.shop_id IS NULL OR EXISTS(SELECT 1 FROM shops parent WHERE parent.id=l.shop_id AND parent.status<>'deleted')) ORDER BY l.created_at DESC LIMIT 100 OFFSET $1",[offset(req)])).rows));
+  router.get('/listings',async(req,res)=>{
+    const rows=(await pool.query("SELECT l.*,a.name AS seller_name FROM listings l JOIN accounts a ON a.id=l.seller_id WHERE NOT a.email LIKE 'deleted-%@invalid.example' AND l.status<>'deleted' AND (l.shop_id IS NULL OR EXISTS(SELECT 1 FROM shops parent WHERE parent.id=l.shop_id AND parent.status<>'deleted')) ORDER BY l.created_at DESC LIMIT 100 OFFSET $1",[offset(req)])).rows;
+    ok(res,rows.map(r=>({...r,family_review_version:familyReviewVersion(r)})));
+  });
   router.patch('/listings/:id',async(req,res)=>{
     const p=z.object({status:z.enum(['active','removed']),title:z.string().trim().min(3).max(180).optional(),description:z.string().max(5000).optional()}).parse(req.body);
     const managed=(await pool.query('SELECT l.seller_id,l.admin_managed,s.provisioned_by FROM listings l LEFT JOIN shops s ON s.id=l.shop_id AND s.owner_id=l.seller_id WHERE l.id=$1',[z.string().uuid().parse(req.params.id)])).rows[0];

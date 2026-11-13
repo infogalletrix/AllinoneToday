@@ -286,21 +286,20 @@ export default function ProductOwnerPage(){
   }
   async function deleteCatalogueItem(kind,item){
     if(busy||mutationLock.current||deletePromptLock.current)return;
-    if(!item.family_review_version){setError('Refresh the records before deleting this item.');return;}
     const shop=kind==='shops',label=shop?item.name:item.title;
     deletePromptLock.current=true;
     try{
       const accepted=await confirm({
         title:shop?'Delete this shop?':'Delete this product?',
         message:shop
-          ? `Delete “${label}” and all products and services linked to it? They will be removed from the catalogue and public browsing. You cannot restore them from this dashboard. The owner’s account and message history will be kept. Cancel any active subscription before deleting.`
+          ? `Delete “${label}” and all products and services linked to it? They will be permanently removed from the catalogue. Any recurring AutoPay mandate will be cancelled.`
           : `Delete “${label}” from the catalogue and public browsing? You cannot restore it from this dashboard. Existing message history will be kept.`,
         confirmLabel:shop?'Delete shop':'Delete product',cancelLabel:shop?'Keep shop':'Keep product',tone:'danger',
       });
       if(!accepted||mutationLock.current)return;
       mutationLock.current=true;setBusy(true);setError('');setMessage('');setShopNotice(null);setProductNotice('');
       try{
-        await request('/admin/catalogue/'+kind+'/'+encodeURIComponent(item.id),{method:'DELETE',body:JSON.stringify({contentVersion:item.family_review_version})});
+        await request('/admin/catalogue/'+kind+'/'+encodeURIComponent(item.id),{method:'DELETE',body:JSON.stringify({contentVersion:item.family_review_version||''})});
         setData(previous=>Array.isArray(previous)?previous.filter(row=>row.id!==item.id):previous);
         setDraftDirty(false);
         setMessage((shop?'Shop deleted: ':'Product deleted: ')+label+'.'+(shop?' Its products and services were also removed from the catalogue.':''));
